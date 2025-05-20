@@ -16,7 +16,7 @@ public class ServerChannelManage {
     private Map<Byte, ServerConfig> serverConfigMap = new ConcurrentHashMap<>();////<serverId,ServerConfig>
 
     public Channel getChanelByIp(Byte serverId) {
-        return serverChannelMap.getOrDefault(serverId, 0L);
+        return serverChannelMap.getOrDefault(serverId, null);
     }
 
     public Channel removeChanelByIp(Byte serverId) {
