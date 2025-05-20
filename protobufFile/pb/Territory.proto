@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "message";
+
+
+message PlayerTerritoryResp
+{
+	repeated int32 blockId = 1; //解锁地块ID
+}

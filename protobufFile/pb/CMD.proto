@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+
+option java_package = "message";
+
+
+enum MSG{
+	NONE                  = 0;
+	LOGIN_REQ             = 1000;  //玩家登录请求
+	LOGIN_RESP            = 1001;  //玩家登录返回
+	
+	PLAYER_DATA_RESP      = 2000;  //玩家数据同步
+	PLAYER_TERRITORY_RESP = 2001;  //玩家领土同步
+	
+	PLAYER_BUILDINGS_RESP                = 2051; //玩家建筑同步
+	PLAYER_BUILDING_CONSTRUCT_REQ        = 2053; //玩家建造建筑
+	PLAYER_BUILDING_LEVEL_UP_REQ         = 2054; //建筑升级
+	PLAYER_BUILDING_CONSTRUCT_UPDATE_REQ = 2055; //玩家建筑更新
+}
+

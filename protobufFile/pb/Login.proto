@@ -1,0 +1,16 @@
+syntax = "proto3";
+option java_package = "message";
+
+message LoginReq
+{
+	string account 	= 1; //账号
+	string pwd      = 2; //密码
+}
+
+message LoginResp
+{
+	int32 rltCode    = 1; //返回码
+	int64 serverTime = 2; //服务器当前时间
+	string account   = 3; //账号
+	string playerId  = 4; //角色ID
+}

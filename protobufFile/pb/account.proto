@@ -1,0 +1,67 @@
+syntax = "proto3";
+option java_package = "message";
+import "monon.proto";
+
+/*加密流程
+客户端:
+1，选择私钥 a (随机数，1 < a < p-1)
+2，发送,g,A给服务端，(其中计算公钥 A = g^a mod p)
+
+服务端:
+1,选择私钥 b (随机数，1 < b < p-1)
+2,计算公钥 B,并发送B给客户端,(其中计算公钥 B = g^b mod p)
+
+校验K:
+共享密钥计算:
+客户端: K = B^a mod p = (g^b)^a mod p = g^(ab) mod p
+服务端: K = A^b mod p = (g^a)^b mod p = g^(ab) mod p
+
+HMAC 校验（更安全）
+客户端：
+从 共享密钥K 派生一个 HMAC 密钥（如 HMAC_KEY = SHA256(K || "CLIENT")）。
+对测试消息 "DH_VERIFY" 计算 HMAC，得到 H1。
+发送 H1 给服务端。
+
+服务端：
+从 共享密钥K 派生相同的 HMAC 密钥（HMAC_KEY = SHA256(K || "CLIENT")）。
+对 "DH_VERIFY" 计算 HMAC，得到 H2。
+检查 H1 == H2，如果一致则密钥校验通过。
+*/
+
+//公钥交换请求
+message KeyExchangeReq {
+    bytes g = 1;   // 生成元
+    bytes p = 2;   // 素数
+    bytes public_key = 3; // 公钥
+}
+
+//公钥交换响应
+message KeyExchangeResp {
+    bytes public_key = 1;   //公钥
+}
+
+// 用共享密钥加密测试验证请求
+message KeyVerificationReq {
+    bytes test_message = 1;  // 用共享密钥加密的测试消息
+}
+// 用共享密钥加密测试验证响应
+message KeyVerificationResp {
+    bool success = 1;                  // 验证是否成功
+    bytes encrypted_echo = 2;          // 服务端返回的加密回显(可选)
+    string error_message = 3;          // 失败时的错误信息
+}
+
+//示例
+message LoginResponse
+{
+    fixed32 aaa = 1;
+    fixed32 bbb = 2;
+}
+
+//示例
+message TempRequest
+{
+    monon.messs ss=1;
+    fixed32 aaa = 2;
+    fixed32 bbb = 3;
+}

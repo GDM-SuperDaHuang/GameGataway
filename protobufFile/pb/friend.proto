@@ -1,0 +1,31 @@
+syntax = "proto3";
+option java_package = "message";
+
+
+//通用错误码
+enum ERERROR {
+    SUCCESS=0;
+    PARAMET_ERERROR=1;
+    UNKNOWN_ERERROR = 2;
+    TIMEOUT_ERERROR = 3;
+}
+
+//示例
+message TestRequest {
+    string data = 1;
+}
+//示例
+message TestResponse {
+    string result = 1;
+}
+//示例
+message FriendRequest
+{
+    int64 userId=1;
+}
+//示例
+message FriendsResponse
+{
+    repeated int64 userIdList=1;
+}
+

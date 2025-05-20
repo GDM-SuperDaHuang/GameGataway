@@ -1,0 +1,18 @@
+syntax = "proto3";
+option java_package = "message";
+package monon;
+
+//通用错误码
+enum ERERROR {
+    SUCCESS=0;
+    PARAMET_ERERROR=1;
+    UNKNOWN_ERERROR = 2;
+    TIMEOUT_ERERROR = 3;
+}
+
+//示例
+message messs {
+    string data = 1;
+}
+
+

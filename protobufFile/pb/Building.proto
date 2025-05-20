@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+
+option java_package = "message";
+
+
+message BuildingData
+{
+	string buildingUuid = 1; //建筑唯一ID
+	int32 buildingId    = 2;
+	int32 position      = 3;
+}
+
+
+
+message BuildingConstructReq
+{
+	int32 buildingId = 1;
+	int32 position   = 2;
+}
+
+
+message BuildingLevelUpReq
+{
+	string buildingUuid = 1; //建筑唯一ID
+}
+
+
+message BuildingUpdateResp
+{
+	BuildingData buildingData = 1; //建筑信息
+	int32 reason              = 2; //更新原因
+}
