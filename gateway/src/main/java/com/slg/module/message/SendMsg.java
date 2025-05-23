@@ -95,7 +95,7 @@ public class SendMsg {
     /**
      * 服务器信息
      */
-    public ByteBuf buildServerMsg(long userId, int cid, int errorCode, int protocolId, int zip, int encrypted, byte[] bodyArray) {
+    public ByteBuf buildServerMsg(long userId, int cid, int errorCode, int protocolId, int zip, int encrypted, ByteBuf bodyArray) {
         int length = bodyArray.length;
         //写回
         ByteBuf out = Unpooled.buffer(24 + length);

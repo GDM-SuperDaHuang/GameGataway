@@ -28,6 +28,7 @@ import java.net.SocketException;
 
 import io.netty.handler.timeout.IdleStateHandler;
 
+import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 
 @Component
@@ -87,7 +88,8 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, ByteBufferMessage msg) throws Exception {
         int protocolId = msg.getProtocolId();
-        byte[] body = msg.getBody();
+        ByteBuf byteBuf = msg.getBody();
+        ByteBuffer body = byteBuf.nioBuffer();
         Channel channel = ctx.channel();
         Method parse = postProcessor.getParseFromMethod(protocolId);
         if (parse == null) {

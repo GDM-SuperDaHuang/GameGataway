@@ -57,8 +57,8 @@ public class HandleBeanDefinitionRegistryPostProcessor implements BeanDefinition
                             handleMap.putIfAbsent(key, clazz);
                             methodMap.put(key,method);
                             try {
-                                Method parseFromMethod = parameterType.getMethod("parseFrom", byte[].class);
-//                                Method parseFromMethod = parameterType.getMethod("parseFrom", ByteBuffer.class);
+//                                Method parseFromMethod = parameterType.getMethod("parseFrom", byte[].class);
+                                Method parseFromMethod = parameterType.getMethod("parseFrom", ByteBuffer.class);
                                 parseFromMethodMap.put(key, parseFromMethod);
                             } catch (NoSuchMethodException e) {
                                 throw new RuntimeException(e);
