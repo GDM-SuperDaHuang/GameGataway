@@ -9,23 +9,22 @@ import io.netty.channel.ChannelHandlerContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import java.io.IOException;
 
-import static message.Account.*;
-import static message.Login.LoginReq;
-//用户登录
+import static message.Heart.*;
+//心跳
 @ToServer
 public class Heart {
     @Autowired
     private ClientChannelManage clientchannelManage;
     //心跳
-    @ToMethod(value = 5)
-    public MsgResponse HeartHandle(ChannelHandlerContext ctx, LoginReq request, long userId) throws IOException, InterruptedException {
+    @ToMethod(value = 11)
+    public MsgResponse HeartHandle(ChannelHandlerContext ctx, HeartReq req, long userId) throws IOException, InterruptedException {
         long now = SystemTimeCache.currentTimeMillis();
         Long hearTime = clientchannelManage.getHearTime(userId);
         if (hearTime + Constants.HeartTime < now) {
             clientchannelManage.remove(ctx.channel());
         }
         clientchannelManage.updateHearTime(userId, now);
-        LoginResponse.Builder builder = LoginResponse.newBuilder();
+        HeartResp.Builder builder = HeartResp.newBuilder();
         MsgResponse msgResponse = MsgResponse.newInstance(builder);
         return msgResponse;
     }

@@ -53,8 +53,8 @@ public class HandleBeanDefinitionRegistryPostProcessor implements BeanDefinition
                             //获取第二个参数，加载Protobuf，请求类
                             Class<?> parameterReqType = parameterTypes[1];
                             //获取第三个参数，加载Protobuf，响应类
-                            Class<?> parameterRespType = parameterTypes[2];
-                            classRespMap.put(key, parameterRespType);
+//                            Class<?> parameterRespType = parameterTypes[2];
+//                            classRespMap.put(key, parameterRespType);
                             handleMap.putIfAbsent(key, clazz);
                             methodMap.put(key,method);
                             try {

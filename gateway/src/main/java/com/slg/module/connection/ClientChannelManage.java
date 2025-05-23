@@ -40,7 +40,7 @@ public class ClientChannelManage {
     }
 
     public Long getUserId(Channel channel) {
-        return channelUserIdMap.getOrDefault(channel, null);
+        return channelUserIdMap.getOrDefault(channel, 0L);
     }
 
     public void putCipher(Long userId, DHKeyInfo k) {

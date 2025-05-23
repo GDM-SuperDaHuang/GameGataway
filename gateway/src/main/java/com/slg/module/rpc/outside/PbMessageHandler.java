@@ -14,7 +14,6 @@ import com.slg.module.util.BeanTool;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -24,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.SocketException;
@@ -43,7 +43,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
     private ClientChannelManage clientchannelManage;
     @Autowired
     private TargetServerHandler targetServerHandler;
-    private final EventLoopGroup forwardingGroup = new NioEventLoopGroup(4);
+    private final EventLoopGroup forwardingGroup = new NioEventLoopGroup(16);
     private final Bootstrap bootstrap;
 
     @Autowired
@@ -76,7 +76,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
 
     /**
      * @param clientChannel 客户端-网关连接
-     * @param msg 信息
+     * @param msg           信息
      * @throws Exception 异常
      */
     @Override
@@ -100,15 +100,26 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
             //写回
             GeneratedMessage.Builder<?> responseBody = response.getBody();
             Message message = responseBody.buildPartial();
-            ByteBuf respBody = ByteBufAllocator.DEFAULT.buffer();
-            try (ByteBufOutputStream outputStream = new ByteBufOutputStream(byteBuf)) {
-                message.writeTo(outputStream); // 直接写入 ByteBuf
-            }
+            ByteBuf respBody = ByteBufAllocator.DEFAULT.buffer(message.getSerializedSize());// 预分配精确大小
+            message.writeTo(new OutputStream() {
+                @Override
+                public void write(int b) {
+                    respBody.writeByte(b);
+                }
+
+                @Override
+                public void write(byte[] b, int off, int len) {
+                    respBody.writeBytes(b, off, len);
+                }
+            });
+//            try (ByteBufOutputStream outputStream = new ByteBufOutputStream(respBody)) {
+//                message.writeTo(outputStream); // 直接写入 ByteBuf
+//            }
+
             short bodyLength = (short) respBody.readableBytes(); // 这里获取长度
             //加密判断 todo
 
             //压缩判断 todo
-
 
             //todo
             ByteBuf out = msgUtil.buildClientMsg(msg.getCid(), response.getErrorCode(), protocolId, Constants.NoZip, Constants.NoEncrypted, bodyLength, respBody);
@@ -124,7 +135,8 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
                     msg.recycle();
                 }
             });
-
+            respBody.release();
+//            ByteBufferMessage.printStats();
         } else {//转发
             ServerConfig serverConfig = routingProperties.getServerByProtoId(protocolId);
             if (serverConfig == null) {

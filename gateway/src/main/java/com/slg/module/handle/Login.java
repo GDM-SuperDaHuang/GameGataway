@@ -31,8 +31,8 @@ public class Login {
     private ClientChannelManage clientchannelManage;
 
     // 密钥交换
-    @ToMethod(value = 3)
-    public MsgResponse keyExchangeHandle(ChannelHandlerContext ctx, KeyExchangeReq request, KeyExchangeResp resp,long userId) {
+    @ToMethod(value = 2)
+    public MsgResponse keyExchangeHandle(ChannelHandlerContext ctx, KeyExchangeReq request,long userId) {
         BigInteger g = new BigInteger(request.getG().toByteArray());
         BigInteger p = new BigInteger(request.getP().toByteArray());
         BigInteger clientPublicKey = new BigInteger(request.getPublicKey().toByteArray());
@@ -66,8 +66,8 @@ public class Login {
     }
 
     // 密钥验证
-    @ToMethod(value = 4)//todo
-    public MsgResponse keyExchangeHandle2(ChannelHandlerContext ctx, KeyVerificationReq request, long userId) throws Exception {
+    @ToMethod(value = 3)//todo
+    public MsgResponse keyVerificationHandle(ChannelHandlerContext ctx, KeyVerificationReq request, long userId) throws Exception {
         DHKeyInfo keyInfo = clientchannelManage.getCipher("");
         if (keyInfo == null) {
             return MsgResponse.newInstance(ErrorCodeConstants.INVALID_PARAMETER);
@@ -104,7 +104,7 @@ public class Login {
     }
 
     //登录
-    @ToMethod(value = 10)
+    @ToMethod(value = 4)
     public MsgResponse loginHandle(ChannelHandlerContext ctx, LoginReq request, long userId) throws IOException, InterruptedException {
         clientchannelManage.put(ctx.channel(), 122111L);
         LoginResp.Builder builder = LoginResp.newBuilder()

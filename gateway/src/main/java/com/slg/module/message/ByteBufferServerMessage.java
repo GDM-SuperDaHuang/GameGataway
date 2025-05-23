@@ -32,7 +32,7 @@ public class ByteBufferServerMessage {
     }
 
     // 从对象池获取实例（传入 ByteBuf 直接引用）
-    public static ByteBufferServerMessage newInstance(long userId, int cid, int errorCode, int protocolId, byte zip, byte encrypted,short length, ByteBuf body) {
+    public static ByteBufferServerMessage newInstance(long userId, int cid, int errorCode, int protocolId, byte zip, byte encrypted, short length, ByteBuf body) {
         ByteBufferServerMessage msg = RECYCLER.get();
         msg.userId = userId;
         msg.cid = cid;
@@ -54,9 +54,13 @@ public class ByteBufferServerMessage {
 
     // 回收对象
     public void recycle() {
+        userId = 0;
         cid = 0;
         errorCode = 0;
         protocolId = 0;
+        zip = 0;
+        encrypted = 0;
+        length = 0;
         if (body != null) {
             body.release();
             body = null;
