@@ -119,7 +119,8 @@ public class Login {
         LoginResponse.Builder builder = LoginResponse.newBuilder()
                 .setAaa(999999999)
                 .setBbb(777777777);
-        MsgResponse msgResponse = new MsgResponse();
+
+        MsgResponse msgResponse = MsgResponse.newInstance(0, builder);
         msgResponse.setBody(builder);
         msgResponse.setErrorCode(0);
         return msgResponse;

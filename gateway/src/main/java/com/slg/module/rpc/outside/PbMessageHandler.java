@@ -118,6 +118,9 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
 
             //todo
             ByteBuf out = sendMsg.buildClientMsg(msg.getCid(), response.getErrorCode(), protocolId, Constants.NoZip, Constants.NoEncrypted, bodyLength, respBody);
+
+            //对象回收
+            response.recycle();
             ChannelFuture channelFuture = clientChannel.writeAndFlush(out);
             channelFuture.addListener(future -> {
                 if (future.isSuccess()) {

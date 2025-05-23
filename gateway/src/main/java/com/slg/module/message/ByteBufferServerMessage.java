@@ -17,10 +17,7 @@ public class ByteBufferServerMessage {
     private byte zip;//压缩
     private byte encrypted;//加密
     private short length;//长度
-
-
     private ByteBuf body; // 改用 ByteBuf 避免拷贝
-
     private static final Recycler<ByteBufferServerMessage> RECYCLER = new Recycler<ByteBufferServerMessage>() {
         @Override
         protected ByteBufferServerMessage newObject(Handle<ByteBufferServerMessage> handle) {
