@@ -1,7 +1,7 @@
 package com.slg.module.rpc.interMsg;
 
 
-import com.slg.module.message.ByteBufferServerMessage;
+import com.slg.module.message.ByteBufferServerMessageTemp;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -18,7 +18,7 @@ public class IdleStateEventHandler extends ChannelInboundHandlerAdapter {
             if (event.state() == IdleState.WRITER_IDLE) {
                 // 发送心跳包
                 //todo
-                ctx.writeAndFlush(new ByteBufferServerMessage(0,0, 0, 0,null));
+                ctx.writeAndFlush(new ByteBufferServerMessageTemp(0,0, 0, 0,null));
 //                log.debug("Send heartbeat to target server: {}", ctx.channel().remoteAddress());
             }
         } else {

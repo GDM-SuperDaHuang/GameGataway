@@ -1,6 +1,7 @@
 package com.slg.module.rpc.outside;
 
 import com.google.protobuf.GeneratedMessage;
+import com.google.protobuf.Message;
 import com.slg.module.config.GatewayRoutingProperties;
 import com.slg.module.connection.ClientChannelManage;
 import com.slg.module.connection.ServerChannelManage;
@@ -13,6 +14,8 @@ import com.slg.module.rpc.interMsg.TargetServerHandler;
 import com.slg.module.util.BeanTool;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -90,20 +93,26 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
         int protocolId = msg.getProtocolId();
         ByteBuf byteBuf = msg.getBody();
         ByteBuffer body = byteBuf.nioBuffer();
-        Channel channel = ctx.channel();
         Method parse = postProcessor.getParseFromMethod(protocolId);
         if (parse == null) {
-            ByteBuf outClient = sendMsg.buildClientMsg(msg.getCid(), ErrorCodeConstants.SERIALIZATION_METHOD_LACK, protocolId, Constants.NoZip, Constants.NoEncrypted, null);
+            ByteBuf outClient = sendMsg.buildClientMsg(msg.getCid(), ErrorCodeConstants.SERIALIZATION_METHOD_LACK, protocolId, Constants.NoZip, Constants.NoEncrypted, Constants.NoLength,null);
             ctx.writeAndFlush(outClient);
             return;
         }
         long userId = clientchannelManage.getUserId(ctx.channel());
         if (protocolId < gateProtoIdMax) {//本地
             Object msgObject = parse.invoke(null, body);
-            MsgResponse message = route(ctx, msgObject, protocolId, userId);
+            MsgResponse response = route(ctx, msgObject, protocolId, userId);
             //写回
-            GeneratedMessage.Builder<?> responseBody = message.getBody();
+            GeneratedMessage.Builder<?> responseBody = response.getBody();
             byte[] bodyByteArr = responseBody.buildPartial().toByteArray();
+
+
+            Message message = responseBody.buildPartial();
+            ByteBuf respBody = ByteBufAllocator.DEFAULT.buffer();
+            try (ByteBufOutputStream outputStream = new ByteBufOutputStream(byteBuf)) {
+                message.writeTo(outputStream); // 直接写入 ByteBuf
+            }
             //加密判断 todo
 
 
@@ -111,7 +120,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
 
 
             //todo
-            ByteBuf out = sendMsg.buildClientMsg(msg.getCid(), message.getErrorCode(), protocolId, Constants.NoZip, Constants.NoEncrypted, bodyByteArr);
+            ByteBuf out = sendMsg.buildClientMsg(msg.getCid(), response.getErrorCode(), protocolId, Constants.NoZip, Constants.NoEncrypted,msg.getLength(), respBody);
             ChannelFuture channelFuture = ctx.writeAndFlush(out);
             channelFuture.addListener(future -> {
                 if (!future.isSuccess()) {
@@ -154,7 +163,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
 
         //进行转发到目标服务器
         if (channel != null && channel.isActive()) {
-            ByteBuf out = sendMsg.buildServerMsg(userId, msg.getCid(), msg.getErrorCode(), msg.getProtocolId(), 0, 1, msg.getBody());
+            ByteBuf out = sendMsg.buildServerMsg(userId, msg.getCid(), msg.getErrorCode(), msg.getProtocolId(), 0, 1,msg.getLength(), msg.getBody());
             ChannelFuture channelFuture = channel.writeAndFlush(out);
             channelFuture.addListener((ChannelFutureListener) future -> {
                 if (future.isSuccess()) {
@@ -226,7 +235,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
         //日志记录失败日志 todo
 
         // 发送失败,直接返回，告诉客户端
-        ByteBuf out = sendMsg.buildClientMsg(cid, errorCode, protocolId, Constants.NoZip, Constants.NoEncrypted, null);
+        ByteBuf out = sendMsg.buildClientMsg(cid, errorCode, protocolId, Constants.NoZip, Constants.NoEncrypted, Constants.NoLength,null);
         ChannelFuture channelFuture = ctx.writeAndFlush(out);
         channelFuture.addListener(future -> {
             if (!future.isSuccess()) {//通知客户端失败 日志 todo

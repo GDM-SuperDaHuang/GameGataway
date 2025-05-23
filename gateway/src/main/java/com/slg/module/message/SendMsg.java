@@ -72,11 +72,7 @@ public class SendMsg {
     /**
      * 客户端消息
      */
-    public ByteBuf buildClientMsg(int cid, int errorCode, int protocolId, byte zip, byte encrypted, byte[] bodyArray) {
-        if (bodyArray == null) {
-            bodyArray = new byte[]{0};
-        }
-        int length = bodyArray.length;
+    public ByteBuf buildClientMsg(int cid, int errorCode, int protocolId, byte zip, byte encrypted, short length, ByteBuf body) {
         //写回
         ByteBuf out = Unpooled.buffer(16 + length);
         //消息头
@@ -88,15 +84,16 @@ public class SendMsg {
         //消息体
         out.writeShort(length);   // 消息体长度，2字节
         // 写入消息体
-        out.writeBytes(bodyArray);
+        if (body!=null){
+            out.writeBytes(body);
+        }
         return out;
     }
 
     /**
      * 服务器信息
      */
-    public ByteBuf buildServerMsg(long userId, int cid, int errorCode, int protocolId, int zip, int encrypted, ByteBuf bodyArray) {
-        int length = bodyArray.length;
+    public ByteBuf buildServerMsg(long userId, int cid, int errorCode, int protocolId, int zip, int encrypted, short length, ByteBuf body) {
         //写回
         ByteBuf out = Unpooled.buffer(24 + length);
         //消息头
@@ -107,9 +104,11 @@ public class SendMsg {
         out.writeByte(zip);                       // zip压缩标志，1字节
         out.writeByte(encrypted);                       // 加密标志，1字节
         //消息体
-        out.writeShort(bodyArray.length);                 // 消息体长度，2字节
+        out.writeShort(length);                 // 消息体长度，2字节
         // 写入消息体
-        out.writeBytes(bodyArray);
+        if (body!=null){
+            out.writeBytes(body);
+        }
         return out;
     }
 

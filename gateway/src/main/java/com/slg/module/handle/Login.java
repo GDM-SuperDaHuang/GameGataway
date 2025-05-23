@@ -7,15 +7,13 @@ import com.slg.module.connection.ClientChannelManage;
 import com.slg.module.connection.DHKeyInfo;
 import com.slg.module.message.ErrorCodeConstants;
 import com.slg.module.message.MsgResponse;
+import com.slg.module.util.Pools;
 import io.netty.channel.ChannelHandlerContext;
 import org.springframework.beans.factory.annotation.Autowired;
 
 
 import javax.crypto.Cipher;
-import javax.crypto.SecretKey;
-import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.math.BigInteger;
@@ -34,15 +32,9 @@ public class Login {
     @Autowired
     private ClientChannelManage clientchannelManage;
 
-
     // 密钥交换
     @ToMethod(value = 3)
-    public MsgResponse keyExchangeHandle(ChannelHandlerContext ctx, KeyExchangeReq request, long userId) throws IOException, InterruptedException {
-
-//        if (request == null || !request.hasG() || !request.hasP() || !request.hasPublicKey()) {
-//            throw new IllegalArgumentException("Invalid key exchange request parameters");
-//        }
-
+    public MsgResponse keyExchangeHandle(ChannelHandlerContext ctx, KeyExchangeReq request, KeyExchangeResp resp,long userId) {
         BigInteger g = new BigInteger(request.getG().toByteArray());
         BigInteger p = new BigInteger(request.getP().toByteArray());
         BigInteger clientPublicKey = new BigInteger(request.getPublicKey().toByteArray());
@@ -64,8 +56,15 @@ public class Login {
         clientchannelManage.putCipher(ip, new DHKeyInfo(b, B, K));
 
         ByteString serverPublicKey = ByteString.copyFrom(B.toByteArray());
-        KeyExchangeResp.Builder builder = KeyExchangeResp.newBuilder()
+
+//        KeyExchangeResp.Builder builder = KeyExchangeResp.newBuilder()
+//                .setPublicKey(serverPublicKey);
+
+        //对象池
+        KeyExchangeResp.Builder builder = Pools.KeyExchangeRespPOOL.borrow()
                 .setPublicKey(serverPublicKey);
+
+
         MsgResponse msgResponse = new MsgResponse();
         msgResponse.setBody(builder);
         return msgResponse;

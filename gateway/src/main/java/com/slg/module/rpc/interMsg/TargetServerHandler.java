@@ -45,11 +45,11 @@ public class TargetServerHandler extends SimpleChannelInboundHandler<ByteBufferS
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, ByteBufferServerMessage msg) throws Exception {
         long userId = msg.getUserId();
-        byte[] body = msg.getBody();
+        ByteBuf body = msg.getBody();
         //转发回给客户端
         Channel clientChannel = channelManage.getChannelByUserId(userId);
         if (clientChannel != null) {
-            ByteBuf out = sendMsg.buildClientMsg(msg.getCid(), msg.getErrorCode(), msg.getProtocolId(), msg.getZip(), msg.getEncrypted(), body);
+            ByteBuf out = sendMsg.buildClientMsg(msg.getCid(), msg.getErrorCode(), msg.getProtocolId(), msg.getZip(), msg.getEncrypted(),msg.getLength(), body);
             clientChannel.writeAndFlush(out)
                     .addListener(future -> {
                         if (!future.isSuccess()) {//客户端连接丢失

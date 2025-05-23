@@ -57,7 +57,7 @@ public class MsgDecode extends ByteToMessageDecoder {
         int errorCode = in.readInt();
         int protocolId = in.readInt();
         byte zip = in.readByte();
-        byte pbVersion = in.readByte();
+        byte encrypted = in.readByte();
         short length = in.readShort();
 
         // 检查是否有足够的字节来读取整个消息体

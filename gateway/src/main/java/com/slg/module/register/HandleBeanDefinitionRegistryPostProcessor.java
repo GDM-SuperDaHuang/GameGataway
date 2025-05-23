@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class HandleBeanDefinitionRegistryPostProcessor implements BeanDefinitionRegistryPostProcessor {
     //pd对象
-    private final Map<Integer, Class<?>> classMap = new ConcurrentHashMap<>();
+    private final Map<Integer, Class<?>> classRespMap = new ConcurrentHashMap<>();
 
     //pb序列化方法
     private final Map<Integer, Method> parseFromMethodMap = new ConcurrentHashMap<>();
@@ -50,15 +50,16 @@ public class HandleBeanDefinitionRegistryPostProcessor implements BeanDefinition
                             // 获取方法的所有参数类型
                             Class<?>[] parameterTypes = method.getParameterTypes();
                             int length = parameterTypes.length;
-                            //获取第二个参数，加载Protobuf类
-                            Class<?> parameterType = parameterTypes[1];
-                            classMap.put(key, parameterType);
-
+                            //获取第二个参数，加载Protobuf，请求类
+                            Class<?> parameterReqType = parameterTypes[1];
+                            //获取第三个参数，加载Protobuf，响应类
+                            Class<?> parameterRespType = parameterTypes[2];
+                            classRespMap.put(key, parameterRespType);
                             handleMap.putIfAbsent(key, clazz);
                             methodMap.put(key,method);
                             try {
 //                                Method parseFromMethod = parameterType.getMethod("parseFrom", byte[].class);
-                                Method parseFromMethod = parameterType.getMethod("parseFrom", ByteBuffer.class);
+                                Method parseFromMethod = parameterReqType.getMethod("parseFrom", ByteBuffer.class);
                                 parseFromMethodMap.put(key, parseFromMethod);
                             } catch (NoSuchMethodException e) {
                                 throw new RuntimeException(e);
@@ -78,9 +79,6 @@ public class HandleBeanDefinitionRegistryPostProcessor implements BeanDefinition
         return parseFromMethodMap.getOrDefault(key, null);
     }
 
-    public  Class<?> getClassMap (Integer key) {
-        return classMap.getOrDefault(key, null);
-    }
 
     public Class<?> getHandleMap(Integer key) {
         return handleMap.getOrDefault(key,null);
@@ -88,5 +86,9 @@ public class HandleBeanDefinitionRegistryPostProcessor implements BeanDefinition
 
     public Method getMethodMap(Integer key) {
         return methodMap.getOrDefault(key,null);
+    }
+
+    public Map<Integer, Class<?>> getClassRespMap() {
+        return classRespMap;
     }
 }

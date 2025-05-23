@@ -9,4 +9,6 @@ public final class Constants {
     //不加密
     public static byte NoEncrypted = 0;
 
+    public static short NoLength = 0;
+
 } 

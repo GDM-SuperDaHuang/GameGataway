@@ -13,6 +13,7 @@ public class ByteBufferMessage {
     private int cid;//顺序号
     private int errorCode;//错误码
     private int protocolId;//协议id
+    private short length;//长度
     //    private ByteBuffer body;//消息体
 //    private byte[] body;//消息体
     private ByteBuf body; // 改用 ByteBuf 避免拷贝
@@ -70,6 +71,10 @@ public class ByteBufferMessage {
 //        this.protocolId = protocolId;
 //        this.body = body;
 //    }
+
+    public short getLength() {
+        return length;
+    }
 
     public int getCid() {
         return cid;
