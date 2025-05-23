@@ -8,7 +8,6 @@ import com.slg.module.connection.ServerChannelManage;
 import com.slg.module.connection.ServerConfig;
 import com.slg.module.message.*;
 import com.slg.module.register.HandleBeanDefinitionRegistryPostProcessor;
-import com.slg.module.rpc.interMsg.IdleStateEventHandler;
 import com.slg.module.rpc.interMsg.MsgServerInternalDecode;
 import com.slg.module.rpc.interMsg.TargetServerHandler;
 import com.slg.module.util.BeanTool;
@@ -29,10 +28,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.SocketException;
 
-import io.netty.handler.timeout.IdleStateHandler;
-
 import java.nio.ByteBuffer;
-import java.util.concurrent.TimeUnit;
 
 @Component
 @ChannelHandler.Sharable
@@ -49,8 +45,6 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
     private TargetServerHandler targetServerHandler;
     private final EventLoopGroup forwardingGroup = new NioEventLoopGroup(4);
     private final Bootstrap bootstrap;
-    private final IdleStateHandler idleStateHandler = new IdleStateHandler(0, 30, 0, TimeUnit.SECONDS);
-    private final IdleStateEventHandler idleStateEventHandler = new IdleStateEventHandler();
 
     @Autowired
     private GatewayRoutingProperties routingProperties;  // 注入配置
@@ -58,7 +52,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
     private int gateProtoIdMax;
 
     @Autowired
-    private SendMsg sendMsg;
+    private MsgUtil msgUtil;
 
     /**
      * 网关转发
@@ -117,7 +111,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
 
 
             //todo
-            ByteBuf out = sendMsg.buildClientMsg(msg.getCid(), response.getErrorCode(), protocolId, Constants.NoZip, Constants.NoEncrypted, bodyLength, respBody);
+            ByteBuf out = msgUtil.buildClientMsg(msg.getCid(), response.getErrorCode(), protocolId, Constants.NoZip, Constants.NoEncrypted, bodyLength, respBody);
 
             //对象回收
             response.recycle();
@@ -225,7 +219,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
         //日志记录失败日志 todo
 
         // 发送失败,直接返回，告诉客户端
-        ByteBuf out = sendMsg.buildClientMsg(msg.getCid(), errorCode, msg.getProtocolId(), Constants.NoZip, Constants.NoEncrypted, Constants.NoLength, null);
+        ByteBuf out = msgUtil.buildClientMsg(msg.getCid(), errorCode, msg.getProtocolId(), Constants.NoZip, Constants.NoEncrypted, Constants.NoLength, null);
         ChannelFuture channelFuture = ctx.writeAndFlush(out);
         channelFuture.addListener(future -> {
             if (!future.isSuccess()) {//通知客户端失败 日志 todo
@@ -239,7 +233,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
 
     //发送消息
     public void forward(Channel serverChannel, ChannelHandlerContext clientChannel, ByteBufferMessage msg, long userId, int errorCode, ServerConfig serverConfig) {
-        ByteBuf out = sendMsg.buildServerMsg(userId, msg.getCid(), msg.getErrorCode(), msg.getProtocolId(), msg.getZip(), msg.getEncrypted(), msg.getLength(), msg.getBody());
+        ByteBuf out = msgUtil.buildServerMsg(userId, msg.getCid(), msg.getErrorCode(), msg.getProtocolId(), msg.getZip(), msg.getEncrypted(), msg.getLength(), msg.getBody());
         ChannelFuture channelFuture = serverChannel.writeAndFlush(out);
         channelFuture.addListener((ChannelFutureListener) future -> {
             if (future.isSuccess()) {

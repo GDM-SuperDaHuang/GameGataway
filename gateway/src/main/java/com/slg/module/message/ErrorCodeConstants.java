@@ -1,8 +1,10 @@
 package com.slg.module.message;
 
+//错误码
 public final class ErrorCodeConstants {
     // 防止实例化该类
-    private ErrorCodeConstants() {}
+    private ErrorCodeConstants() {
+    }
 
     // 通用成功码
     public static final int SUCCESS = 0;

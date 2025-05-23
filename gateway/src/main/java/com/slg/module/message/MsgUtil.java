@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 
 
 @Component
-public class SendMsg {
+public class MsgUtil {
     public void send(ChannelHandlerContext ctx, byte[] msg) {
         ByteBuf buf = Unpooled.buffer(16);
         //消息头

@@ -16,30 +16,43 @@ public class ClientChannelManage {
     private final Map<Channel, Long> channelUserIdMap = new ConcurrentHashMap<>();//channel-userId
     private final Map<Long, Channel> userIdChannelMap = new ConcurrentHashMap<>();//userId-channel
 
+    //心跳
+    private final Map<Long, Long> timeHeartMap = new ConcurrentHashMap<>();//userId-time
+
     //加密密钥
     private final Map<String, DHKeyInfo> ipCipherMap = new ConcurrentHashMap<>();//ipInfo-key共享密钥
     private final Map<Long, DHKeyInfo> userIdCipherMap = new ConcurrentHashMap<>();//userID-key共享密钥
 
     public ClientChannelManage() {
     }
+
     public void put(Channel channel, Long userId) {
         channelUserIdMap.put(channel, userId);
         userIdChannelMap.put(userId, channel);
+    }
+
+    public void updateHearTime(Long userId, Long time) {
+        timeHeartMap.put(userId, userId);
+    }
+
+    public Long getHearTime(Long userId) {
+        return timeHeartMap.getOrDefault(userId, 0L);
     }
 
     public Long getUserId(Channel channel) {
         return channelUserIdMap.getOrDefault(channel, null);
     }
 
-    public void putCipher(Long userId,DHKeyInfo k) {
-        userIdCipherMap.put(userId,k);
+    public void putCipher(Long userId, DHKeyInfo k) {
+        userIdCipherMap.put(userId, k);
     }
+
     public DHKeyInfo getCipher(Long userId) {
         return userIdCipherMap.get(userId);
     }
 
-    public void putCipher(String ip,DHKeyInfo k) {
-        ipCipherMap.put(ip,k);
+    public void putCipher(String ip, DHKeyInfo k) {
+        ipCipherMap.put(ip, k);
     }
 
     public DHKeyInfo getCipher(String ip) {
@@ -54,7 +67,6 @@ public class ClientChannelManage {
         Long userId = channelUserIdMap.remove(channel);
         userIdChannelMap.remove(userId);
     }
-
 
 
 }

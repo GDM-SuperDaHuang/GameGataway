@@ -1,6 +1,5 @@
 package com.slg.module.message;
 
-import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.Recycler;
 

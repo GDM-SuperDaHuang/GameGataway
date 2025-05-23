@@ -1,5 +1,6 @@
 package com.slg.module.rpc.outside;
 
+import com.slg.module.rpc.outside.outsideMsg.IdleStateEventHandler;
 import com.slg.module.rpc.outside.outsideMsg.MsgDecode;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -8,6 +9,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.timeout.IdleStateHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
@@ -15,6 +17,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import java.net.InetSocketAddress;
+import java.util.concurrent.TimeUnit;
 
 @Component
 public class GatewayServer implements CommandLineRunner {
@@ -26,6 +29,10 @@ public class GatewayServer implements CommandLineRunner {
     @Autowired
     private PbMessageHandler pbMessageHandler;
     LoggingHandler loggingHandler = new LoggingHandler(LogLevel.INFO);
+    private final IdleStateHandler idleStateHandler = new IdleStateHandler(0, 30, 0, TimeUnit.SECONDS);
+    private final IdleStateEventHandler idleStateEventHandler = new IdleStateEventHandler();
+
+
     public void start(int port) throws Exception {
 
         try {

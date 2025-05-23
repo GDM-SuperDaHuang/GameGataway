@@ -4,7 +4,7 @@ import com.slg.module.connection.ClientChannelManage;
 import com.slg.module.connection.ServerChannelManage;
 import com.slg.module.connection.ServerConfig;
 import com.slg.module.message.ByteBufferServerMessage;
-import com.slg.module.message.SendMsg;
+import com.slg.module.message.MsgUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
@@ -33,7 +33,7 @@ public class TargetServerHandler extends SimpleChannelInboundHandler<ByteBufferS
     private ServerChannelManage serverChannelManage;
 
     @Autowired
-    private SendMsg sendMsg;
+    private MsgUtil msgUtil;
 
     /**
      * 接收目标服务器数据
@@ -49,7 +49,7 @@ public class TargetServerHandler extends SimpleChannelInboundHandler<ByteBufferS
         //转发回给客户端
         Channel clientChannel = channelManage.getChannelByUserId(userId);
         if (clientChannel != null) {
-            ByteBuf out = sendMsg.buildClientMsg(msg.getCid(), msg.getErrorCode(), msg.getProtocolId(), msg.getZip(), msg.getEncrypted(),msg.getLength(), body);
+            ByteBuf out = msgUtil.buildClientMsg(msg.getCid(), msg.getErrorCode(), msg.getProtocolId(), msg.getZip(), msg.getEncrypted(),msg.getLength(), body);
             clientChannel.writeAndFlush(out)
                     .addListener(future -> {
                         if (!future.isSuccess()) {//客户端连接丢失
@@ -59,7 +59,8 @@ public class TargetServerHandler extends SimpleChannelInboundHandler<ByteBufferS
                             msg.recycle();
                         }
                     });
-        } else {//todo 没有连接，警告处理，记录失败
+        } else {
+            //todo 没有连接，警告处理，记录失败
             msg.recycle();
         }
     }

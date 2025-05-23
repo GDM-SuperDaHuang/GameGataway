@@ -1,4 +1,4 @@
-package com.slg.module.rpc.interMsg;
+package com.slg.module.rpc.outside.outsideMsg;
 
 
 import com.slg.module.message.ByteBufferServerMessageTemp;
