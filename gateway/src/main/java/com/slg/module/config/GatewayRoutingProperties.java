@@ -5,15 +5,69 @@ import jakarta.annotation.PostConstruct;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.LongAdder;
 
 @Component
 @ConfigurationProperties(prefix = "gateway.routing")  // 从配置读取
 public class GatewayRoutingProperties {
     private List<ServerConfig> servers;
-    private static Map<Integer, ServerConfig> protoMap = new HashMap<>();//protoId-ServerConfig
+    private static Map<Integer, List<Byte>> protoGroupIdMap = new HashMap<>();//protoId-groupIdList
+
+    private static Map<Byte, ServerConfig> protoServerMap = new HashMap<>();//groupId-ServerConfig
+
+
+    //统计
+    // Key: 服务器IP或标识, Value: 连接数计数器
+    private static final ConcurrentHashMap<Byte, LongAdder> SERVER_CONNECTION_COUNTS = new ConcurrentHashMap<>();//serverId - 数量
+
+    /**
+     * 客户端连接时调用（线程安全）
+     * @param serverId 服务器唯一标识（如IP）
+     */
+    public static void increment(Byte serverId) {
+        SERVER_CONNECTION_COUNTS.computeIfAbsent(serverId, k -> new LongAdder()).increment();
+    }
+
+    /**
+     * 客户端断开时调用（线程安全）
+     * @param serverId 服务器唯一标识
+     */
+    public static void decrement(Byte serverId) {
+        LongAdder counter = SERVER_CONNECTION_COUNTS.get(serverId);
+        if (counter != null) {
+            counter.decrement();
+            // 可选：连接数为0时移除记录（避免内存泄漏）
+            if (counter.sum() == 0) {
+                SERVER_CONNECTION_COUNTS.remove(serverId, counter);
+            }
+        }
+    }
+
+    /**
+     * 获取当前连接数
+     * @param serverId 服务器唯一标识
+     * @return 连接数（若服务器不存在则返回0）
+     */
+    public static long getCount(String serverId) {
+        LongAdder counter = SERVER_CONNECTION_COUNTS.get(serverId);
+        return counter == null ? 0 : counter.sum();
+    }
+
+    /**
+     * 打印所有服务器的连接数（调试用）
+     */
+    public static void printAllStats() {
+        SERVER_CONNECTION_COUNTS.forEach((serverId, counter) ->
+                System.out.printf("Server: %s, Connections: %d\n", serverId, counter.sum())
+        );
+    }
+
+
 
     public void setServers(List<ServerConfig> servers) {
         this.servers = servers;
@@ -23,15 +77,38 @@ public class GatewayRoutingProperties {
     public void init() {
         for (ServerConfig server : servers) {
             byte serverId = server.getServerId();
+            byte groupId = server.getGroupId();
             int protoIdMin = server.getProtoIdMin();
             int protoIdMax = server.getProtoIdMax();
             for (int i = protoIdMin; i <= protoIdMax; i++) {
-                protoMap.put(i, server);
+                List<Byte> groupIdList = protoGroupIdMap.get(i);
+                if (groupIdList == null) {
+                    groupIdList = new ArrayList<>();
+                }
+                groupIdList.add(groupId);
+                protoGroupIdMap.put(i, groupIdList);
+                protoServerMap.put(groupId, server);
             }
         }
     }
 
-    public ServerConfig getServerByProtoId(int protocolId) {
-        return protoMap.get(protocolId);
+    /**
+     * @param protocolId
+     * @param flag       0:第一个,1:随机,2:连接旧服务器,其他连接特定服务器；
+     * @return
+     */
+    public ServerConfig getServerByProtoId(int protocolId, int flag) {
+        List<Byte> groupIdList = protoGroupIdMap.get(protocolId);
+        if (flag == 0) {
+            Byte groupId = groupIdList.get(0);
+            return protoServerMap.get(groupId);
+        } else if (flag == 1) {
+            Byte groupId = groupIdList.get(0);
+            return protoServerMap.get(groupId);
+        }else if (flag == 2) {
+            Byte groupId = groupIdList.get(0);
+            return protoServerMap.get(groupId);
+        }
+        return null;
     }
 }

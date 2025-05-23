@@ -84,13 +84,13 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
         int protocolId = msg.getProtocolId();
         ByteBuf byteBuf = msg.getBody();
         ByteBuffer body = byteBuf.nioBuffer();
-        Method parse = postProcessor.getParseFromMethod(protocolId);
-        if (parse == null) {
-            failedNotificationClient(clientChannel, msg, ErrorCodeConstants.SERIALIZATION_METHOD_LACK);
-            return;
-        }
         long userId = clientchannelManage.getUserId(clientChannel.channel());
         if (protocolId < gateProtoIdMax) {//本地
+            Method parse = postProcessor.getParseFromMethod(protocolId);
+            if (parse == null) {
+                failedNotificationClient(clientChannel, msg, ErrorCodeConstants.SERIALIZATION_METHOD_LACK);
+                return;
+            }
             Object msgObject = parse.invoke(null, body);
             MsgResponse response = route(clientChannel, msgObject, protocolId, userId);
             if (response == null) {
@@ -138,7 +138,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
             respBody.release();
 //            ByteBufferMessage.printStats();
         } else {//转发
-            ServerConfig serverConfig = routingProperties.getServerByProtoId(protocolId);
+            ServerConfig serverConfig = routingProperties.getServerByProtoId(protocolId,0);
             if (serverConfig == null) {
                 // 转发失败,直接返回，告诉客户端
                 failedNotificationClient(clientChannel, msg, ErrorCodeConstants.ESTABLISH_CONNECTION_FAILED);
