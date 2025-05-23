@@ -63,21 +63,16 @@ public class Login {
         //对象池
         KeyExchangeResp.Builder builder = Pools.KeyExchangeRespPOOL.borrow()
                 .setPublicKey(serverPublicKey);
-
-
-        MsgResponse msgResponse = new MsgResponse();
-        msgResponse.setBody(builder);
+        MsgResponse msgResponse = MsgResponse.newInstance(builder);
         return msgResponse;
     }
 
     // 密钥验证
     @ToMethod(value = 4)//todo
     public MsgResponse keyExchangeHandle2(ChannelHandlerContext ctx, KeyVerificationReq request, long userId) throws Exception {
-        MsgResponse msgResponse = new MsgResponse();
         DHKeyInfo keyInfo = clientchannelManage.getCipher("");
         if (keyInfo == null) {
-            msgResponse.setErrorCode(ErrorCodeConstants.INVALID_PARAMETER);
-            return msgResponse;
+            return MsgResponse.newInstance(ErrorCodeConstants.INVALID_PARAMETER);
         }
         // 3. 获取约定的固定测试消息 (实际应用中应该从配置或常量获取)
         byte[] fixedMessageBytes = DHKeyInfo.testMsg.getBytes(StandardCharsets.UTF_8);
@@ -106,8 +101,7 @@ public class Login {
                 .setSuccess(success)
                 .setEncryptedEcho(serverEncrypteds)
                 .setErrorMessage(success ? "验证成功" : "验证失败");
-
-        msgResponse.setBody(builder);
+        MsgResponse msgResponse = MsgResponse.newInstance(builder);
         return msgResponse;
     }
 
@@ -115,14 +109,10 @@ public class Login {
     @ToMethod(value = 10)
     public MsgResponse loginHandle(ChannelHandlerContext ctx, LoginReq request, long userId) throws IOException, InterruptedException {
         clientchannelManage.put(ctx.channel(), 122111L);
-
         LoginResponse.Builder builder = LoginResponse.newBuilder()
                 .setAaa(999999999)
                 .setBbb(777777777);
-
-        MsgResponse msgResponse = MsgResponse.newInstance(0, builder);
-        msgResponse.setBody(builder);
-        msgResponse.setErrorCode(0);
+        MsgResponse msgResponse = MsgResponse.newInstance(builder);
         return msgResponse;
     }
 }

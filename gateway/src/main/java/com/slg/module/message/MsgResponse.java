@@ -24,10 +24,17 @@ public class MsgResponse {
     }
 
     // 从对象池获取实例（传入 ByteBuf 直接引用）
-    public static MsgResponse newInstance(int errorCode, GeneratedMessage.Builder<?> body) {
+    public static MsgResponse newInstance(GeneratedMessage.Builder<?> body) {
+        MsgResponse msg = RECYCLER.get();
+        msg.errorCode = ErrorCodeConstants.SUCCESS;
+        msg.body = body;
+        return msg;
+    }
+    
+    public static MsgResponse newInstance(int errorCode) {
         MsgResponse msg = RECYCLER.get();
         msg.errorCode = errorCode;
-        msg.body = body;
+        msg.body = null;
         return msg;
     }
 
