@@ -109,9 +109,8 @@ public class Login {
     @ToMethod(value = 10)
     public MsgResponse loginHandle(ChannelHandlerContext ctx, LoginReq request, long userId) throws IOException, InterruptedException {
         clientchannelManage.put(ctx.channel(), 122111L);
-        LoginResponse.Builder builder = LoginResponse.newBuilder()
-                .setAaa(999999999)
-                .setBbb(777777777);
+        LoginResp.Builder builder = LoginResp.newBuilder()
+                .setPlayerId("111L");
         MsgResponse msgResponse = MsgResponse.newInstance(builder);
         return msgResponse;
     }
