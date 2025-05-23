@@ -13,11 +13,12 @@ public class ByteBufferMessage {
     private int cid;//顺序号
     private int errorCode;//错误码
     private int protocolId;//协议id
+    private byte zip;
+    private byte encrypted;
     private short length;//长度
-    //    private ByteBuffer body;//消息体
-//    private byte[] body;//消息体
+    //private ByteBuffer body;//消息体
+    //private byte[] body;//消息体
     private ByteBuf body; // 改用 ByteBuf 避免拷贝
-
 
     private static final Recycler<ByteBufferMessage> RECYCLER = new Recycler<ByteBufferMessage>() {
         @Override
@@ -34,20 +35,24 @@ public class ByteBufferMessage {
     }
 
     // 从对象池获取实例（传入 ByteBuf 直接引用）
-    public static ByteBufferMessage newInstance(int cid, int errorCode, int protocolId, ByteBuf body) {
+    public static ByteBufferMessage newInstance(int cid, int errorCode, int protocolId, byte zip, byte encrypted, short length, ByteBuf body) {
         ByteBufferMessage msg = RECYCLER.get();
         msg.cid = cid;
         msg.errorCode = errorCode;
         msg.protocolId = protocolId;
-        msg.body = body.retain(); // 增加引用计数
+        msg.zip = zip;
+        msg.encrypted = encrypted;
+        msg.length = length;
+        msg.body = body; // 直接引用，不调用 retain()
+//        msg.body = body.retain(); // 增加引用计数
         return msg;
     }
 
-    // 解析 Protobuf（零拷贝）
-    public <T extends com.google.protobuf.Message> T parseBody(com.google.protobuf.Parser<T> parser)
-            throws InvalidProtocolBufferException {
-        return parser.parseFrom(body.nioBuffer());
-    }
+//    // 解析 Protobuf（零拷贝）
+//    public <T extends com.google.protobuf.Message> T parseBody(com.google.protobuf.Parser<T> parser)
+//            throws InvalidProtocolBufferException {
+//        return parser.parseFrom(body.nioBuffer());
+//    }
 
     // 回收对象
     public void recycle() {
@@ -60,17 +65,6 @@ public class ByteBufferMessage {
         }
         handle.recycle(this);
     }
-
-
-//    public ByteBufferMessage() {
-//    }
-
-//    public ByteBufferMessage(int cid, int errorCode, int protocolId, byte[] body) {
-//        this.cid = cid;
-//        this.errorCode = errorCode;
-//        this.protocolId = protocolId;
-//        this.body = body;
-//    }
 
     public short getLength() {
         return length;
@@ -88,10 +82,15 @@ public class ByteBufferMessage {
         return protocolId;
     }
 
-//    public byte[] getBody() {
-//        return body;
-//    }
     public ByteBuf getBody() {
         return body;
+    }
+
+    public byte getZip() {
+        return zip;
+    }
+
+    public byte getEncrypted() {
+        return encrypted;
     }
 }

@@ -45,15 +45,16 @@ public class ByteBufferServerMessage {
         msg.zip = zip;
         msg.encrypted = encrypted;
         msg.length = length;
-        msg.body = body.retain(); // 增加引用计数
+        msg.body = body; // 增加引用计数
+//        msg.body = body.retain(); // 增加引用计数
         return msg;
     }
 
-    // 解析 Protobuf（零拷贝）
-    public <T extends com.google.protobuf.Message> T parseBody(com.google.protobuf.Parser<T> parser)
-            throws InvalidProtocolBufferException {
-        return parser.parseFrom(body.nioBuffer());
-    }
+//    // 解析 Protobuf（零拷贝）
+//    public <T extends com.google.protobuf.Message> T parseBody(com.google.protobuf.Parser<T> parser)
+//            throws InvalidProtocolBufferException {
+//        return parser.parseFrom(body.nioBuffer());
+//    }
 
     // 回收对象
     public void recycle() {

@@ -39,17 +39,14 @@ import java.util.concurrent.TimeUnit;
 public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMessage> {
     @Autowired
     private HandleBeanDefinitionRegistryPostProcessor postProcessor;
-
     //目标服务器--网关管理
     @Autowired
     private ServerChannelManage serverChannelManage;
     //客户端--网关管理
     @Autowired
     private ClientChannelManage clientchannelManage;
-
     @Autowired
     private TargetServerHandler targetServerHandler;
-
     private final EventLoopGroup forwardingGroup = new NioEventLoopGroup(4);
     private final Bootstrap bootstrap;
     private final IdleStateHandler idleStateHandler = new IdleStateHandler(0, 30, 0, TimeUnit.SECONDS);
@@ -84,58 +81,62 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
 
 
     /**
-     * @param ctx 客户端-网关连接
+     * @param clientChannel 客户端-网关连接
      * @param msg 信息
      * @throws Exception 异常
      */
     @Override
-    protected void channelRead0(ChannelHandlerContext ctx, ByteBufferMessage msg) throws Exception {
+    protected void channelRead0(ChannelHandlerContext clientChannel, ByteBufferMessage msg) throws Exception {
         int protocolId = msg.getProtocolId();
         ByteBuf byteBuf = msg.getBody();
         ByteBuffer body = byteBuf.nioBuffer();
         Method parse = postProcessor.getParseFromMethod(protocolId);
         if (parse == null) {
-            ByteBuf outClient = sendMsg.buildClientMsg(msg.getCid(), ErrorCodeConstants.SERIALIZATION_METHOD_LACK, protocolId, Constants.NoZip, Constants.NoEncrypted, Constants.NoLength,null);
-            ctx.writeAndFlush(outClient);
+            failedNotificationClient(clientChannel, msg, ErrorCodeConstants.SERIALIZATION_METHOD_LACK);
             return;
         }
-        long userId = clientchannelManage.getUserId(ctx.channel());
+        long userId = clientchannelManage.getUserId(clientChannel.channel());
         if (protocolId < gateProtoIdMax) {//本地
             Object msgObject = parse.invoke(null, body);
-            MsgResponse response = route(ctx, msgObject, protocolId, userId);
+            MsgResponse response = route(clientChannel, msgObject, protocolId, userId);
+            if (response == null) {
+                failedNotificationClient(clientChannel, msg, ErrorCodeConstants.SERIALIZATION_METHOD_LACK);
+                return;
+            }
             //写回
             GeneratedMessage.Builder<?> responseBody = response.getBody();
-            byte[] bodyByteArr = responseBody.buildPartial().toByteArray();
-
-
             Message message = responseBody.buildPartial();
             ByteBuf respBody = ByteBufAllocator.DEFAULT.buffer();
             try (ByteBufOutputStream outputStream = new ByteBufOutputStream(byteBuf)) {
                 message.writeTo(outputStream); // 直接写入 ByteBuf
             }
+            short bodyLength = (short) respBody.readableBytes(); // 这里获取长度
             //加密判断 todo
-
 
             //压缩判断 todo
 
 
             //todo
-            ByteBuf out = sendMsg.buildClientMsg(msg.getCid(), response.getErrorCode(), protocolId, Constants.NoZip, Constants.NoEncrypted,msg.getLength(), respBody);
-            ChannelFuture channelFuture = ctx.writeAndFlush(out);
+            ByteBuf out = sendMsg.buildClientMsg(msg.getCid(), response.getErrorCode(), protocolId, Constants.NoZip, Constants.NoEncrypted, bodyLength, respBody);
+            ChannelFuture channelFuture = clientChannel.writeAndFlush(out);
             channelFuture.addListener(future -> {
-                if (!future.isSuccess()) {
+                if (future.isSuccess()) {
+                    msg.recycle();
+                } else {
                     System.err.println("Write and flush failed: " + future.cause());
+                    msg.recycle();
                 }
             });
+
         } else {//转发
             ServerConfig serverConfig = routingProperties.getServerByProtoId(protocolId);
             if (serverConfig == null) {
-                // 发送失败,直接返回，告诉客户端
-                failedNotificationClient(ctx,msg.getCid(), ErrorCodeConstants.ESTABLISH_CONNECTION_FAILED, msg.getProtocolId());
+                // 转发失败,直接返回，告诉客户端
+                failedNotificationClient(clientChannel, msg, ErrorCodeConstants.ESTABLISH_CONNECTION_FAILED);
                 return;
             }
             // 转发到目标服务器
-            forwardToTargetServer(ctx, msg, userId, serverConfig);
+            forwardToTargetServer(clientChannel, msg, userId, serverConfig);
         }
     }
 
@@ -156,29 +157,15 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
                 }
             } catch (Exception e) {
                 // 发送失败,直接返回，告诉客户端
-                failedNotificationClient(clientChannel,msg.getCid(), ErrorCodeConstants.ESTABLISH_CONNECTION_FAILED, msg.getProtocolId());
+                failedNotificationClient(clientChannel, msg, ErrorCodeConstants.ESTABLISH_CONNECTION_FAILED);
                 return;
             }
         }
-
         //进行转发到目标服务器
         if (channel != null && channel.isActive()) {
-            ByteBuf out = sendMsg.buildServerMsg(userId, msg.getCid(), msg.getErrorCode(), msg.getProtocolId(), 0, 1,msg.getLength(), msg.getBody());
-            ChannelFuture channelFuture = channel.writeAndFlush(out);
-            channelFuture.addListener((ChannelFutureListener) future -> {
-                if (future.isSuccess()) {
-                    // 消息转发成功的处理
-                    //System.out.println("Successfully forwarded message");
-                } else {
-                    // 消息转发失败的处理
-                    // log.error("Failed to forward message to {}", targetServerAddress, future.cause());
-                    serverChannelManage.removeChanelByIp(serverConfig.getServerId());
-                    //直接告诉客户端，返回错误码
-                    failedNotificationClient(clientChannel,msg.getCid(), ErrorCodeConstants.GATE_FORWARDING_FAILED, msg.getProtocolId());
-                }
-            });
+            forward(channel, clientChannel, msg, userId, ErrorCodeConstants.GATE_FORWARDING_FAILED, serverConfig);
         } else {
-            failedNotificationClient(clientChannel,msg.getCid(), ErrorCodeConstants.GATE_FORWARDING_FAILED, msg.getProtocolId());
+            failedNotificationClient(clientChannel, msg, ErrorCodeConstants.GATE_FORWARDING_FAILED);
         }
     }
 
@@ -231,20 +218,38 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
     }
 
     // 失败通知客户端
-    public void failedNotificationClient(ChannelHandlerContext ctx,int cid, int errorCode, int protocolId) {
+    public void failedNotificationClient(ChannelHandlerContext ctx, ByteBufferMessage msg, int errorCode) {
         //日志记录失败日志 todo
 
         // 发送失败,直接返回，告诉客户端
-        ByteBuf out = sendMsg.buildClientMsg(cid, errorCode, protocolId, Constants.NoZip, Constants.NoEncrypted, Constants.NoLength,null);
+        ByteBuf out = sendMsg.buildClientMsg(msg.getCid(), errorCode, msg.getProtocolId(), Constants.NoZip, Constants.NoEncrypted, Constants.NoLength, null);
         ChannelFuture channelFuture = ctx.writeAndFlush(out);
         channelFuture.addListener(future -> {
             if (!future.isSuccess()) {//通知客户端失败 日志 todo
+                msg.recycle();
                 System.err.println("Write and flush failed: " + future.cause());
+            } else {
+                msg.recycle();
             }
         });
     }
 
-
+    //发送消息
+    public void forward(Channel serverChannel, ChannelHandlerContext clientChannel, ByteBufferMessage msg, long userId, int errorCode, ServerConfig serverConfig) {
+        ByteBuf out = sendMsg.buildServerMsg(userId, msg.getCid(), msg.getErrorCode(), msg.getProtocolId(), msg.getZip(), msg.getEncrypted(), msg.getLength(), msg.getBody());
+        ChannelFuture channelFuture = serverChannel.writeAndFlush(out);
+        channelFuture.addListener((ChannelFutureListener) future -> {
+            if (future.isSuccess()) {
+                msg.recycle();
+            } else {
+                // 消息转发失败的处理
+                // log.error("Failed to forward message to {}", targetServerAddress, future.cause());
+                serverChannelManage.removeChanelByIp(serverConfig.getServerId());
+                //直接告诉客户端，返回错误码
+                failedNotificationClient(clientChannel, msg, errorCode);
+            }
+        });
+    }
 
 
 }

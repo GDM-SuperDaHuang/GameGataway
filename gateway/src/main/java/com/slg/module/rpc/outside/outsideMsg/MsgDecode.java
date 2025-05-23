@@ -75,6 +75,6 @@ public class MsgDecode extends ByteToMessageDecoder {
 
         // 零拷贝切片（引用计数+1）
         ByteBuf body = in.readRetainedSlice(length);
-        out.add(ByteBufferMessage.newInstance(cid, errorCode, protocolId, body));
+        out.add(ByteBufferMessage.newInstance(cid, errorCode, protocolId, zip, encrypted, length, body));
     }
 }

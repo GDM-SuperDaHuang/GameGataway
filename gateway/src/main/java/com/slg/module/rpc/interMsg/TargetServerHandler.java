@@ -54,10 +54,13 @@ public class TargetServerHandler extends SimpleChannelInboundHandler<ByteBufferS
                     .addListener(future -> {
                         if (!future.isSuccess()) {//客户端连接丢失
                             System.err.println("Write and flush failed: " + future.cause());
+                            msg.recycle();
+                        }else {
+                            msg.recycle();
                         }
                     });
         } else {//todo 没有连接，警告处理，记录失败
-
+            msg.recycle();
         }
     }
 
