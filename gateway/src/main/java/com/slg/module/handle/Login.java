@@ -7,7 +7,6 @@ import com.slg.module.connection.ClientChannelManage;
 import com.slg.module.connection.DHKeyInfo;
 import com.slg.module.message.ErrorCodeConstants;
 import com.slg.module.message.MsgResponse;
-import com.slg.module.util.Pools;
 import io.netty.channel.ChannelHandlerContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import javax.crypto.Cipher;
@@ -55,12 +54,12 @@ public class Login {
 
         ByteString serverPublicKey = ByteString.copyFrom(B.toByteArray());
 
-//        KeyExchangeResp.Builder builder = KeyExchangeResp.newBuilder()
-//                .setPublicKey(serverPublicKey);
+        KeyExchangeResp.Builder builder = KeyExchangeResp.newBuilder()
+                .setPublicKey(serverPublicKey);
 
         //对象池
-        KeyExchangeResp.Builder builder = Pools.KeyExchangeRespPOOL.borrow()
-                .setPublicKey(serverPublicKey);
+//        KeyExchangeResp.Builder builder = Pools.KeyExchangeRespPOOL.borrow()
+//                .setPublicKey(serverPublicKey);
         MsgResponse msgResponse = MsgResponse.newInstance(builder);
         return msgResponse;
     }

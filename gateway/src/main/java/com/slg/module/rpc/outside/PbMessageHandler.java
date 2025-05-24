@@ -100,6 +100,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
             //写回
             GeneratedMessage.Builder<?> responseBody = response.getBody();
             Message message = responseBody.buildPartial();
+
             ByteBuf respBody = ByteBufAllocator.DEFAULT.buffer(message.getSerializedSize());// 预分配精确大小
             message.writeTo(new OutputStream() {
                 @Override

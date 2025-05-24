@@ -2,8 +2,6 @@ package com.slg.module.connection;
 
 import io.netty.channel.Channel;
 import org.springframework.stereotype.Component;
-
-import java.math.BigInteger;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 

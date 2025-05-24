@@ -8,7 +8,14 @@
 	<version>0.0.1-SNAPSHOT</version>
 	<name>gateway</name>
 	<description>gateway</description>
+
     <dependencies>
+		<dependency>
+			<groupId>com.slg.module</groupId>
+			<artifactId>common</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
+
         <dependency>
             <groupId>com.proto</groupId>
             <artifactId>protobufFile</artifactId>

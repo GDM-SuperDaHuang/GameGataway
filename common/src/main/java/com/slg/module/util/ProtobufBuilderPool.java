@@ -1,7 +1,7 @@
 package com.slg.module.util;
 
-import io.netty.util.Recycler;
 import com.google.protobuf.*;
+import io.netty.util.Recycler;
 
 import java.io.IOException;
 import java.io.InputStream;

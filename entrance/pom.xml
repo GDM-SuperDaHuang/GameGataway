@@ -30,7 +30,7 @@
 
 		<dependency>
 			<groupId>com.slg.module</groupId>
-			<artifactId>demo</artifactId>
+			<artifactId>gateway</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 

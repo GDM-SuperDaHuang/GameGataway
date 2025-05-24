@@ -4,12 +4,12 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.slg.module</groupId>
-    <artifactId>demo</artifactId>
+    <artifactId>common</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>demo</name>
-    <description>demo</description>
+    <name>common</name>
+    <description>common</description>
 
-<!--    <packaging>jar</packaging>-->
+    <!--    <packaging>jar</packaging>-->
 
     <parent>
         <groupId>com.slg.module</groupId>
@@ -17,19 +17,10 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
-    <dependencies>
-        <dependency>
-            <groupId>com.slg.module</groupId>
-            <artifactId>gateway</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
-        </dependency>
+    <!--    <dependencies>-->
 
-        <dependency>
-            <groupId>com.proto</groupId>
-            <artifactId>protobufFile</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
-        </dependency>
-    </dependencies>
+    <!--      -->
+    <!--    </dependencies>-->
 
     <build>
         <plugins>

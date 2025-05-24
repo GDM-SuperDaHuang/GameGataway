@@ -8,8 +8,6 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import org.springframework.stereotype.Component;
-
-
 @Component
 public class MsgUtil {
     public void send(ChannelHandlerContext ctx, byte[] msg) {
