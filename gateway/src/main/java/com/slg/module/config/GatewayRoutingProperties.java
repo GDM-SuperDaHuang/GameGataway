@@ -16,9 +16,9 @@ import java.util.concurrent.atomic.LongAdder;
 @ConfigurationProperties(prefix = "gateway.routing")  // 从配置读取
 public class GatewayRoutingProperties {
     private List<ServerConfig> servers;
-    private static Map<Integer, List<Byte>> protoGroupIdMap = new HashMap<>();//protoId-groupIdList
+    private static Map<Integer, Byte> protoGroupIdMap = new HashMap<>();//protoId-groupIdList
 
-    private static Map<Byte, ServerConfig> protoServerMap = new HashMap<>();//groupId-ServerConfig
+    private static Map<Byte, List<ServerConfig>> protoServerMap = new HashMap<>();//groupId-ServerConfig
 
 
     //统计
@@ -77,17 +77,19 @@ public class GatewayRoutingProperties {
     public void init() {
         for (ServerConfig server : servers) {
             byte serverId = server.getServerId();
+            String host = server.getHost();
+            int port = server.getPort();
             byte groupId = server.getGroupId();
             int protoIdMin = server.getProtoIdMin();
             int protoIdMax = server.getProtoIdMax();
-            for (int i = protoIdMin; i <= protoIdMax; i++) {
-                List<Byte> groupIdList = protoGroupIdMap.get(i);
-                if (groupIdList == null) {
-                    groupIdList = new ArrayList<>();
+            for (int protoId = protoIdMin; protoId <= protoIdMax; protoId++) {
+                protoGroupIdMap.put(protoId, groupId);
+                List<ServerConfig> serverList = protoServerMap.get(groupId);
+                if (serverList == null) {
+                    serverList = new ArrayList<>();
                 }
-                groupIdList.add(groupId);
-                protoGroupIdMap.put(i, groupIdList);
-                protoServerMap.put(groupId, server);
+                serverList.add(new ServerConfig(serverId,host,port));
+                protoServerMap.put(groupId, serverList);
             }
         }
     }
@@ -97,17 +99,15 @@ public class GatewayRoutingProperties {
      * @param flag       0:第一个,1:随机,2:连接旧服务器,其他连接特定服务器；
      * @return
      */
-    public ServerConfig getServerByProtoId(int protocolId, int flag) {
-        List<Byte> groupIdList = protoGroupIdMap.get(protocolId);
+    public ServerConfig getServerIDByProtoId(int protocolId, int flag) {
+        Byte groupId= protoGroupIdMap.get(protocolId);
+        List<ServerConfig> serverConfigList = protoServerMap.get(groupId);
         if (flag == 0) {
-            Byte groupId = groupIdList.get(0);
-            return protoServerMap.get(groupId);
+            return serverConfigList.get(0);
         } else if (flag == 1) {
-            Byte groupId = groupIdList.get(0);
-            return protoServerMap.get(groupId);
+            return serverConfigList.get(0);
         }else if (flag == 2) {
-            Byte groupId = groupIdList.get(0);
-            return protoServerMap.get(groupId);
+            return serverConfigList.get(0);
         }
         return null;
     }

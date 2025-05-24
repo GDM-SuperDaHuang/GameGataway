@@ -9,6 +9,7 @@ public class ServerConfig {
     private String host;
     private int port;
 
+
     public ServerConfig(byte serverId, String host, int port) {
         this.serverId = serverId;
         this.host = host;

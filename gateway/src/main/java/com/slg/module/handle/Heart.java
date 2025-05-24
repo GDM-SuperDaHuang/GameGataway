@@ -19,10 +19,6 @@ public class Heart {
     @ToMethod(value = 11)
     public MsgResponse HeartHandle(ChannelHandlerContext ctx, HeartReq req, long userId) throws IOException, InterruptedException {
         long now = SystemTimeCache.currentTimeMillis();
-        Long hearTime = clientchannelManage.getHearTime(userId);
-        if (hearTime + Constants.HeartTime < now) {
-            clientchannelManage.remove(ctx.channel());
-        }
         clientchannelManage.updateHearTime(userId, now);
         HeartResp.Builder builder = HeartResp.newBuilder();
         MsgResponse msgResponse = MsgResponse.newInstance(builder);

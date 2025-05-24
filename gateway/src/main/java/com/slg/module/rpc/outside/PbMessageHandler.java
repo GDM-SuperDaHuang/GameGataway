@@ -139,7 +139,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
             respBody.release();
 //            ByteBufferMessage.printStats();
         } else {//转发
-            ServerConfig serverConfig = routingProperties.getServerByProtoId(protocolId,0);
+            ServerConfig serverConfig = routingProperties.getServerIDByProtoId(protocolId,0);
             if (serverConfig == null) {
                 // 转发失败,直接返回，告诉客户端
                 failedNotificationClient(clientChannel, msg, ErrorCodeConstants.ESTABLISH_CONNECTION_FAILED);
@@ -160,6 +160,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
         Channel channel = serverChannelManage.getChanelByIp(serverConfig.getServerId());
         if (channel == null) {
             try {
+                System.out.println("channel.....null");
                 ChannelFuture future = bootstrap.connect(serverConfig.getHost(), serverConfig.getPort()).sync();
                 if (future.isSuccess()) {
                     channel = future.channel();

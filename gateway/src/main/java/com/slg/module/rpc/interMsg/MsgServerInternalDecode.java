@@ -62,7 +62,6 @@ public class MsgServerInternalDecode extends ByteToMessageDecoder {
 
         // 消息头
         long userId = in.readLong();
-
         int cid = in.readInt();
         int errorCode = in.readInt();
         int protocolId = in.readInt();
@@ -70,9 +69,9 @@ public class MsgServerInternalDecode extends ByteToMessageDecoder {
         byte encrypted = in.readByte();
         short length = in.readShort();
         // 检查是否有足够的字节来读取整个消息体
-        if (readableBytes < 16 + length) {
+        if (readableBytes < 24 + length) {
             // 如果没有，丢弃已经读取的头部信息，并返回
-            in.readerIndex(in.readerIndex() - 16);
+            in.readerIndex(in.readerIndex() - 24);
             return;
         }
         // 零拷贝切片（引用计数+1）
