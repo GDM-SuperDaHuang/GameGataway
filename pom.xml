@@ -131,11 +131,7 @@
             <version>0.10.2</version>
         </dependency>
 
-<!--        <dependency>-->
-<!--            <groupId>com.alibaba</groupId>-->
-<!--            <artifactId>fastjson</artifactId>-->
-<!--            <version>2.0.53</version>-->
-<!--        </dependency>-->
+
 
 <!--        <dependency>-->
 <!--            <groupId>org.apache.logging.log4j</groupId>-->
