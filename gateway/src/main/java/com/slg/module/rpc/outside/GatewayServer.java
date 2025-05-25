@@ -18,7 +18,7 @@ import java.net.InetSocketAddress;
 
 @Component
 public class GatewayServer implements CommandLineRunner {
-    @Value("${netty.server.port:8888}")
+    @Value("${netty.server.port}")
     private int port;
     EventLoopGroup bossGroup = new NioEventLoopGroup(1);
     EventLoopGroup workerGroup = new NioEventLoopGroup(30);
@@ -30,7 +30,6 @@ public class GatewayServer implements CommandLineRunner {
 
 
     public void start(int port) throws Exception {
-
         try {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)
@@ -65,7 +64,6 @@ public class GatewayServer implements CommandLineRunner {
             System.out.println("----------------------------服务器关闭--------------------------------------------");
             workerGroup.shutdownGracefully();
             bossGroup.shutdownGracefully();
-
         }
     }
 

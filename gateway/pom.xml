@@ -9,6 +9,12 @@
 	<name>gateway</name>
 	<description>gateway</description>
 
+	<parent>
+		<groupId>com.slg.module</groupId>
+		<artifactId>GameGatewayServer</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
+
     <dependencies>
 		<dependency>
 			<groupId>com.slg.module</groupId>
@@ -16,11 +22,6 @@
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 
-        <dependency>
-            <groupId>com.proto</groupId>
-            <artifactId>protobufFile</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
-        </dependency>
 		<!-- 加密 -->
 		<dependency>
 			<groupId>org.bouncycastle</groupId>
@@ -29,11 +30,7 @@
 		</dependency>
     </dependencies>
 
-    <parent>
-		<groupId>com.slg.module</groupId>
-		<artifactId>GameGatewayServer</artifactId>
-		<version>0.0.1-SNAPSHOT</version>
-	</parent>
+
 
 	<build>
 		<plugins>
