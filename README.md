@@ -29,3 +29,5 @@
 # [gateway](gateway)
     网关服，开发待续....
 
+# QPS轻松突破4W+，最高可达24w+
+# ![img.png](img.png)
