@@ -23,7 +23,7 @@
               2，注解参数：协议唯一id
               3，注意方法参数格式(ChannelHandlerContext,proto生成类,userId),第一个参数必须为ChannelHandlerContext,第二参数必须为proto生成类,第三参数为long类型userId
               4，SendMsg.java 消息发送根据
-
+# 模块：
 # [entrance](entrance)
     主启动类，程序入口
 # [gateway](gateway)
