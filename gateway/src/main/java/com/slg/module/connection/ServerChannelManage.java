@@ -3,6 +3,7 @@ package com.slg.module.connection;
 import io.netty.channel.Channel;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -13,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ServerChannelManage {
     //目标服务器连接管理
     private Map<Byte, Channel> serverChannelMap = new ConcurrentHashMap<>();//<serverId,channel>
-    private Map<Byte, ServerConfig> serverConfigMap = new ConcurrentHashMap<>();////<serverId,ServerConfig>
+    private Map<Byte, ServerConfig> serverConfigMap = new HashMap<>();////<serverId,ServerConfig>
 
     public Channel getChanelByIp(Byte serverId) {
         return serverChannelMap.getOrDefault(serverId, null);

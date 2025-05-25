@@ -63,7 +63,9 @@ public class ClientChannelManage {
 
     public void remove(Channel channel) {
         Long userId = channelUserIdMap.remove(channel);
-        userIdChannelMap.remove(userId);
+        if (userId!=null){
+            userIdChannelMap.remove(userId);
+        }
     }
 
 

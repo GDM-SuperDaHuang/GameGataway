@@ -34,7 +34,7 @@ public class ByteBufferMessage {
     public static ByteBufferMessage newInstance(int cid, int errorCode, int protocolId, byte zip, byte encrypted, short length, ByteBuf body) {
         ByteBufferMessage msg = RECYCLER.get();
         //测试命中
-        TestMsg.getInstance(protocolId).testCount(msg);
+//        TestMsg.getInstance(protocolId).testCount(msg);
         msg.cid = cid;
         msg.errorCode = errorCode;
         msg.protocolId = protocolId;
@@ -50,7 +50,7 @@ public class ByteBufferMessage {
     public void recycle() {
         cid = 0;
         errorCode = 0;
-        protocolId = 0;
+//        protocolId = 0;
         if (body != null) {
             body.release();
             body = null;

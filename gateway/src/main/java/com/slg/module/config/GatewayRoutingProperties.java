@@ -23,7 +23,7 @@ public class GatewayRoutingProperties {
 
     //统计
     // Key: 服务器IP或标识, Value: 连接数计数器
-    private static final ConcurrentHashMap<Byte, LongAdder> SERVER_CONNECTION_COUNTS = new ConcurrentHashMap<>();//serverId - 数量
+    private static final Map<Byte, LongAdder> SERVER_CONNECTION_COUNTS = new ConcurrentHashMap<>();//serverId - 数量
 
     /**
      * 客户端连接时调用（线程安全）

@@ -27,10 +27,17 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Component
 @ChannelHandler.Sharable
 public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMessage> {
+    private static final ConcurrentHashMap<Byte, Object> SERVER_LOCKS = new ConcurrentHashMap<>(1);
+    // 全局唯一的连接创建锁
+    private static final Object CONNECTION_LOCK = new Object();
     @Autowired
     private HandleBeanDefinitionRegistryPostProcessor postProcessor;
     //目标服务器--网关管理
@@ -138,7 +145,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
 
                 }
             });
-//            ByteBufferMessage.printStats();
+//            TestMsg.getInstance(protocolId).printStats();
         } else {//转发
             ServerConfig serverConfig = routingProperties.getServerIDByProtoId(protocolId,0);
             if (serverConfig == null) {
@@ -160,17 +167,23 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
     private void forwardToTargetServer(ChannelHandlerContext clientChannel, ByteBufferMessage msg, long userId, ServerConfig serverConfig) {
         Channel channel = serverChannelManage.getChanelByIp(serverConfig.getServerId());
         if (channel == null) {
-            try {
-                System.out.println("channel.....null");
-                ChannelFuture future = bootstrap.connect(serverConfig.getHost(), serverConfig.getPort()).sync();
-                if (future.isSuccess()) {
-                    channel = future.channel();
-                    serverChannelManage.put(serverConfig.getServerId(), channel, serverConfig);
+            synchronized (CONNECTION_LOCK) {
+                // 双重检查
+                channel = serverChannelManage.getChanelByIp(serverConfig.getServerId());
+                if (channel == null) {
+                    try {
+                        System.out.println("channel.....null");
+                        ChannelFuture future = bootstrap.connect(serverConfig.getHost(), serverConfig.getPort()).sync();
+                        if (future.isSuccess()) {
+                            channel = future.channel();
+                            serverChannelManage.put(serverConfig.getServerId(), channel, serverConfig);
+                        }
+                    } catch (Exception e) {
+                        // 发送失败,直接返回，告诉客户端
+                        failedNotificationClient(clientChannel, msg, ErrorCodeConstants.ESTABLISH_CONNECTION_FAILED);
+                        return;
+                    }
                 }
-            } catch (Exception e) {
-                // 发送失败,直接返回，告诉客户端
-                failedNotificationClient(clientChannel, msg, ErrorCodeConstants.ESTABLISH_CONNECTION_FAILED);
-                return;
             }
         }
         //进行转发到目标服务器
