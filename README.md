@@ -14,15 +14,7 @@
 	网关服:https://github.com/GDM-SuperDaHuang/GameServer.git，路由，转发，负载均衡配置。
 # [GameServer](GameServer)
 	业务服:https://github.com/GDM-SuperDaHuang/GameServer.git，内置一场调用，进行具体业务等。
-	
-## 注解 
-    @ToMethod:作用于类上，表明这个类为与客户端交互的类
-    
-    @ToServer:
-              1，作用于方法上，表明这个方法为与客户端响应的方法；
-              2，注解参数：协议唯一id
-              3，注意方法参数格式(ChannelHandlerContext,proto生成类,userId),第一个参数必须为ChannelHandlerContext,第二参数必须为proto生成类,第三参数为long类型userId
-              4，SendMsg.java 消息发送根据
+
 # 模块：
 # [entrance](entrance)
     主启动类，程序入口
