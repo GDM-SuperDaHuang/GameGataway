@@ -41,7 +41,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
     private ClientChannelManage clientchannelManage;
     @Autowired
     private TargetServerHandler targetServerHandler;
-    private final EventLoopGroup forwardingGroup = new NioEventLoopGroup(16);
+    private final EventLoopGroup forwardingGroup = new NioEventLoopGroup();
     private final Bootstrap bootstrap;
 
     @Autowired
@@ -91,10 +91,12 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
             }
             Object msgObject = parse.invoke(null, body);
             MsgResponse response = route(clientChannel, msgObject, protocolId, userId);
+
             if (response == null) {
                 failedNotificationClient(clientChannel, msg, ErrorCodeConstants.SERIALIZATION_METHOD_LACK);
                 return;
             }
+
             //写回
             GeneratedMessage.Builder<?> responseBody = response.getBody();
             Message message = responseBody.buildPartial();
@@ -127,14 +129,15 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
             response.recycle();
             ChannelFuture channelFuture = clientChannel.writeAndFlush(out);
             channelFuture.addListener(future -> {
+                respBody.release();
+                msg.recycle();
                 if (future.isSuccess()) {
-                    msg.recycle();
+
                 } else {
                     System.err.println("Write and flush failed: " + future.cause());
-                    msg.recycle();
+
                 }
             });
-            respBody.release();
 //            ByteBufferMessage.printStats();
         } else {//转发
             ServerConfig serverConfig = routingProperties.getServerIDByProtoId(protocolId,0);
@@ -234,11 +237,10 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
         ByteBuf out = msgUtil.buildClientMsg(msg.getCid(), errorCode, msg.getProtocolId(), Constants.NoZip, Constants.NoEncrypted, Constants.NoLength, null);
         ChannelFuture channelFuture = ctx.writeAndFlush(out);
         channelFuture.addListener(future -> {
+            msg.recycle();
             if (!future.isSuccess()) {//通知客户端失败 日志 todo
-                msg.recycle();
                 System.err.println("Write and flush failed: " + future.cause());
             } else {
-                msg.recycle();
             }
         });
     }
@@ -249,6 +251,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
         ChannelFuture channelFuture = serverChannel.writeAndFlush(out);
         channelFuture.addListener((ChannelFutureListener) future -> {
             if (future.isSuccess()) {
+                //释放
                 msg.recycle();
             } else {
                 // 消息转发失败的处理

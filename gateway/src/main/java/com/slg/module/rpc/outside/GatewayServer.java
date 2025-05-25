@@ -21,7 +21,7 @@ public class GatewayServer implements CommandLineRunner {
     @Value("${netty.server.port}")
     private int port;
     EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-    EventLoopGroup workerGroup = new NioEventLoopGroup(30);
+    EventLoopGroup workerGroup = new NioEventLoopGroup(6);
     @Autowired
     private PbMessageHandler pbMessageHandler;
     LoggingHandler loggingHandler = new LoggingHandler(LogLevel.INFO);
@@ -49,6 +49,8 @@ public class GatewayServer implements CommandLineRunner {
                             ChannelPipeline p = ch.pipeline();
                             //日志
 //                            p.addLast("log",loggingHandler);
+                            p.addLast(QPSHandler.INSTANCE);
+
                             p.addLast(new MsgDecode());
                             p.addLast(pbMessageHandler);
 //                            System.out.println("客户端连接成功");
