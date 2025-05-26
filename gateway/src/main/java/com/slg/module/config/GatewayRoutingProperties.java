@@ -1,14 +1,13 @@
 package com.slg.module.config;
 
+import com.slg.module.connection.ClientChannelManage;
 import com.slg.module.connection.ServerConfig;
 import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.LongAdder;
 
@@ -16,25 +15,56 @@ import java.util.concurrent.atomic.LongAdder;
 @ConfigurationProperties(prefix = "gateway.routing")  // 从配置读取
 public class GatewayRoutingProperties {
     private List<ServerConfig> servers;
-    private static Map<Integer, Byte> protoGroupIdMap = new HashMap<>();//protoId-groupIdList
+    byte[] ProtoGroupArr;//protoId-groupId
+    static int groupNumMap = 0;//group的种类
+    private static Map<Byte, ServerConfig> ServerMap = new HashMap<>();//ServerId-Server
 
-    private static Map<Byte, List<ServerConfig>> protoServerMap = new HashMap<>();//groupId-ServerConfig
-
-
+    @Autowired
+    private ClientChannelManage channelManage;
     //统计
     // Key: 服务器IP或标识, Value: 连接数计数器
     private static final Map<Byte, LongAdder> SERVER_CONNECTION_COUNTS = new ConcurrentHashMap<>();//serverId - 数量
 
     /**
      * 客户端连接时调用（线程安全）
+     *
      * @param serverId 服务器唯一标识（如IP）
      */
     public static void increment(Byte serverId) {
         SERVER_CONNECTION_COUNTS.computeIfAbsent(serverId, k -> new LongAdder()).increment();
     }
 
+
+    @PostConstruct
+    public void init() {
+        int max = 0;
+        ArrayList<Byte> groupList = new ArrayList<>();
+        for (ServerConfig server : servers) {
+            int protoIdMax = server.getProtoIdMax();
+            if (protoIdMax > max) {
+                max = protoIdMax;
+            }
+            byte groupId = server.getGroupId();
+            if (!groupList.contains(groupId)) {
+                groupNumMap++;
+                groupList.add(groupId);
+            }
+            ServerMap.put(server.getServerId(), server);
+        }
+        ProtoGroupArr = new byte[max+1];
+        for (ServerConfig server : servers) {
+            byte groupId = server.getGroupId();
+            int protoIdMin = server.getProtoIdMin();
+            int protoIdMax = server.getProtoIdMax();
+            for (int protoId = protoIdMin; protoId <= protoIdMax; protoId++) {
+                ProtoGroupArr[protoId] = groupId;
+            }
+        }
+    }
+
     /**
      * 客户端断开时调用（线程安全）
+     *
      * @param serverId 服务器唯一标识
      */
     public static void decrement(Byte serverId) {
@@ -50,6 +80,7 @@ public class GatewayRoutingProperties {
 
     /**
      * 获取当前连接数
+     *
      * @param serverId 服务器唯一标识
      * @return 连接数（若服务器不存在则返回0）
      */
@@ -67,48 +98,29 @@ public class GatewayRoutingProperties {
         );
     }
 
-
-
     public void setServers(List<ServerConfig> servers) {
         this.servers = servers;
     }
 
-    @PostConstruct
-    public void init() {
-        for (ServerConfig server : servers) {
-            byte serverId = server.getServerId();
-            String host = server.getHost();
-            int port = server.getPort();
-            byte groupId = server.getGroupId();
-            int protoIdMin = server.getProtoIdMin();
-            int protoIdMax = server.getProtoIdMax();
-            for (int protoId = protoIdMin; protoId <= protoIdMax; protoId++) {
-                protoGroupIdMap.put(protoId, groupId);
-                List<ServerConfig> serverList = protoServerMap.get(groupId);
-                if (serverList == null) {
-                    serverList = new ArrayList<>();
-                }
-                serverList.add(new ServerConfig(serverId,host,port));
-                protoServerMap.put(groupId, serverList);
-            }
-        }
-    }
 
     /**
      * @param protocolId
-     * @param flag       0:第一个,1:随机,2:连接旧服务器,其他连接特定服务器；
+     * @param flag       1连接旧服务器
      * @return
      */
-    public ServerConfig getServerIDByProtoId(int protocolId, int flag) {
-        Byte groupId= protoGroupIdMap.get(protocolId);
-        List<ServerConfig> serverConfigList = protoServerMap.get(groupId);
-        if (flag == 0) {
-            return serverConfigList.get(0);
-        } else if (flag == 1) {
-            return serverConfigList.get(0);
-        }else if (flag == 2) {
-            return serverConfigList.get(0);
+    public ServerConfig getServer(int protocolId, Long userId, int flag) {
+        byte groupId = ProtoGroupArr[protocolId];
+        Map<Byte, Byte> gsMap = channelManage.getUserGroupServerMap().computeIfAbsent(userId, k -> new HashMap<>(groupNumMap));
+        Byte serverId = gsMap.get(groupId);
+        if (serverId == null) {//初始化
+            //选一个 groupId 内的第一个server,可选均衡
+            for (ServerConfig server : servers) {
+                if (server.getGroupId() == groupId) {
+                    gsMap.put(groupId, server.getServerId());
+                    return server;
+                }
+            }
         }
-        return null;
+        return ServerMap.get(serverId);
     }
 }

@@ -49,9 +49,9 @@ public class Login {
         BigInteger K = clientPublicKey.modPow(b, p);
 
         //保存密钥信息
-        SocketAddress socketAddress = ctx.channel().remoteAddress();
-        String ip = ((InetSocketAddress) socketAddress).getHostString();
-        clientchannelManage.putCipher(ip, new DHKeyInfo(b, B, K));
+//        SocketAddress socketAddress = ctx.channel().remoteAddress();
+//        String ip = ((InetSocketAddress) socketAddress).getHostString();
+        clientchannelManage.putCipher(ctx.channel(), new DHKeyInfo(b, B, K));
 
         ByteString serverPublicKey = ByteString.copyFrom(B.toByteArray());
 

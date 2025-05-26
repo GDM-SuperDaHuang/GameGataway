@@ -2,6 +2,7 @@ package com.slg.module.connection;
 
 import io.netty.channel.Channel;
 import org.springframework.stereotype.Component;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -17,9 +18,18 @@ public class ClientChannelManage {
     //心跳
     private final Map<Long, Long> timeHeartMap = new ConcurrentHashMap<>();//userId-time
 
+    //todo 删除密钥
     //加密密钥
-    private final Map<String, DHKeyInfo> ipCipherMap = new ConcurrentHashMap<>();//ipInfo-key共享密钥
+    private final Map<Channel, DHKeyInfo> ipCipherMap = new ConcurrentHashMap<>();//ipInfo-key共享密钥
     private final Map<Long, DHKeyInfo> userIdCipherMap = new ConcurrentHashMap<>();//userID-key共享密钥
+
+    //todo 删除服务器
+    //用户服务器负载均衡
+    Map<Long, Map<Byte, Byte>> userGroupServerMap = new ConcurrentHashMap<>();//userId--groupId--ServerId
+
+    public Map<Long, Map<Byte, Byte>> getUserGroupServerMap() {
+        return userGroupServerMap;
+    }
 
     public ClientChannelManage() {
     }
@@ -49,8 +59,8 @@ public class ClientChannelManage {
         return userIdCipherMap.get(userId);
     }
 
-    public void putCipher(String ip, DHKeyInfo k) {
-        ipCipherMap.put(ip, k);
+    public void putCipher(Channel channel, DHKeyInfo k) {
+        ipCipherMap.put(channel, k);
     }
 
     public DHKeyInfo getCipher(String ip) {
@@ -61,11 +71,24 @@ public class ClientChannelManage {
         return userIdChannelMap.getOrDefault(userId, null);
     }
 
+    // 断开连接时
     public void remove(Channel channel) {
         Long userId = channelUserIdMap.remove(channel);
-        if (userId!=null){
+        if (userId != null) {
             userIdChannelMap.remove(userId);
+            removeServerInfo(userId);
         }
+    }
+
+    //密钥删除 todo
+    public void removeKey(Channel channel,long userId) {
+        ipCipherMap.remove(channel);
+        userIdCipherMap.remove(userId);
+    }
+
+    //服务器删除 todo
+    public void removeServerInfo(Long userId) {
+        userGroupServerMap.remove(userId);
     }
 
 

@@ -62,12 +62,6 @@ public class MsgDecode extends ByteToMessageDecoder {
             in.readerIndex(in.readerIndex() - 16);
             return;
         }
-//        // 检查消息体是否完整
-//        if (in.readableBytes() < length) {
-//            in.resetReaderIndex();
-//            return;
-//        }
-
         // 零拷贝切片（引用计数+1）
         ByteBuf body = in.readRetainedSlice(length);
         out.add(ByteBufferMessage.newInstance(cid, errorCode, protocolId, zip, encrypted, length, body));

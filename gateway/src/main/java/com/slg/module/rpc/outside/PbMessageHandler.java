@@ -28,9 +28,6 @@ import java.lang.reflect.Method;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 @Component
 @ChannelHandler.Sharable
@@ -89,7 +86,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
         int protocolId = msg.getProtocolId();
         ByteBuf byteBuf = msg.getBody();
         ByteBuffer body = byteBuf.nioBuffer();
-        long userId = clientchannelManage.getUserId(clientChannel.channel());
+        Long userId = clientchannelManage.getUserId(clientChannel.channel());
         if (protocolId < gateProtoIdMax) {//本地
             Method parse = postProcessor.getParseFromMethod(protocolId);
             if (parse == null) {
@@ -147,7 +144,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
             });
 //            TestMsg.getInstance(protocolId).printStats();
         } else {//转发
-            ServerConfig serverConfig = routingProperties.getServerIDByProtoId(protocolId,0);
+            ServerConfig serverConfig = routingProperties.getServer(protocolId,userId,0);
             if (serverConfig == null) {
                 // 转发失败,直接返回，告诉客户端
                 failedNotificationClient(clientChannel, msg, ErrorCodeConstants.ESTABLISH_CONNECTION_FAILED);
