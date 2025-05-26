@@ -5,6 +5,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * 对象池测试工具
+ */
 public class TestMsg {
     // 存储不同 protocolId 对应的统计器实例
     private static final ConcurrentMap<Integer, TestMsg> INSTANCES = new ConcurrentHashMap<>();

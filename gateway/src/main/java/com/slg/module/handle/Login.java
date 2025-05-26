@@ -7,6 +7,7 @@ import com.slg.module.connection.ClientChannelManage;
 import com.slg.module.connection.DHKeyInfo;
 import com.slg.module.message.ErrorCodeConstants;
 import com.slg.module.message.MsgResponse;
+import com.slg.module.pools.Pools;
 import io.netty.channel.ChannelHandlerContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import javax.crypto.Cipher;
@@ -61,6 +62,7 @@ public class Login {
 //        KeyExchangeResp.Builder builder = Pools.KeyExchangeRespPOOL.borrow()
 //                .setPublicKey(serverPublicKey);
         MsgResponse msgResponse = MsgResponse.newInstance(builder);
+        Pools.KeyExchangeRespPOOL.release(builder);
         return msgResponse;
     }
 
@@ -108,7 +110,10 @@ public class Login {
         clientchannelManage.put(ctx.channel(), 122111L);
         LoginResp.Builder builder = LoginResp.newBuilder()
                 .setPlayerId("111L");
+//        LoginResp.Builder builder = Pools.LoginRespPOOL.borrow()
+//                .setPlayerId("1111L");
         MsgResponse msgResponse = MsgResponse.newInstance(builder);
+//        Pools.LoginRespPOOL.release(builder);
         return msgResponse;
     }
 }
