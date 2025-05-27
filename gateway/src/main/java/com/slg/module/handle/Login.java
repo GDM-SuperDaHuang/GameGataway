@@ -29,6 +29,7 @@ import static message.Account.*;
 public class Login {
     @Autowired
     private ClientChannelManage clientchannelManage;
+    public static String testMsg = "sss";
 
     // 密钥交换
     @ToMethod(value = 2)
@@ -74,7 +75,7 @@ public class Login {
             return MsgResponse.newInstance(ErrorCodeConstants.INVALID_PARAMETER);
         }
         // 3. 获取约定的固定测试消息 (实际应用中应该从配置或常量获取)
-        byte[] fixedMessageBytes = DHKeyInfo.testMsg.getBytes(StandardCharsets.UTF_8);
+        byte[] fixedMessageBytes = testMsg.getBytes(StandardCharsets.UTF_8);
 
         // 4. 使用共享密钥加密固定消息（服务器端）
         // 4.1 派生加密密钥

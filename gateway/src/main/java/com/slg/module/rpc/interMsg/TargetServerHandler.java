@@ -32,8 +32,6 @@ public class TargetServerHandler extends SimpleChannelInboundHandler<ByteBufferS
     @Autowired
     private ServerChannelManage serverChannelManage;
 
-    @Autowired
-    private MsgUtil msgUtil;
 
     /**
      * 接收目标服务器数据
@@ -49,7 +47,7 @@ public class TargetServerHandler extends SimpleChannelInboundHandler<ByteBufferS
         //转发回给客户端
         Channel clientChannel = channelManage.getChannelByUserId(userId);
         if (clientChannel != null) {
-            ByteBuf out = msgUtil.buildClientMsg(msg.getCid(), msg.getErrorCode(), msg.getProtocolId(), msg.getZip(), msg.getEncrypted(),msg.getLength(), body);
+            ByteBuf out = MsgUtil.buildClientMsg(msg.getCid(), msg.getErrorCode(), msg.getProtocolId(), msg.getZip(), msg.getEncrypted(),msg.getLength(), body);
             clientChannel.writeAndFlush(out)
                     .addListener(future -> {
                         if (!future.isSuccess()) {//客户端连接丢失

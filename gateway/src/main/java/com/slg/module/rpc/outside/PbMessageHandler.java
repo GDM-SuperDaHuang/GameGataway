@@ -53,8 +53,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
     @Value("${server.proto-id-max}")
     private int gateProtoIdMax;
 
-    @Autowired
-    private MsgUtil msgUtil;
+
 
     /**
      * 网关转发
@@ -127,7 +126,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
             //压缩判断 todo
 
             //todo
-            ByteBuf out = msgUtil.buildClientMsg(msg.getCid(), response.getErrorCode(), protocolId, Constants.NoZip, Constants.NoEncrypted, bodyLength, respBody);
+            ByteBuf out = MsgUtil.buildClientMsg(msg.getCid(), response.getErrorCode(), protocolId, Constants.NoZip, Constants.NoEncrypted, bodyLength, respBody);
 
             //对象回收
             response.recycle();
@@ -244,7 +243,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
         //日志记录失败日志 todo
 
         // 发送失败,直接返回，告诉客户端
-        ByteBuf out = msgUtil.buildClientMsg(msg.getCid(), errorCode, msg.getProtocolId(), Constants.NoZip, Constants.NoEncrypted, Constants.NoLength, null);
+        ByteBuf out = MsgUtil.buildClientMsg(msg.getCid(), errorCode, msg.getProtocolId(), Constants.NoZip, Constants.NoEncrypted, Constants.NoLength, null);
         ChannelFuture channelFuture = ctx.writeAndFlush(out);
         channelFuture.addListener(future -> {
             msg.recycle();
@@ -257,7 +256,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
 
     //发送消息
     public void forward(Channel serverChannel, ChannelHandlerContext clientChannel, ByteBufferMessage msg, long userId, int errorCode, ServerConfig serverConfig) {
-        ByteBuf out = msgUtil.buildServerMsg(userId, msg.getCid(), msg.getErrorCode(), msg.getProtocolId(), msg.getZip(), msg.getEncrypted(), msg.getLength(), msg.getBody());
+        ByteBuf out = MsgUtil.buildServerMsg(userId, msg.getCid(), msg.getErrorCode(), msg.getProtocolId(), msg.getZip(), msg.getEncrypted(), msg.getLength(), msg.getBody());
         ChannelFuture channelFuture = serverChannel.writeAndFlush(out);
         channelFuture.addListener((ChannelFutureListener) future -> {
             if (future.isSuccess()) {

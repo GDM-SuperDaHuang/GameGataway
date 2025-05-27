@@ -9,7 +9,6 @@ import javax.crypto.spec.SecretKeySpec;
 import java.math.BigInteger;
 public class DHKeyInfo {
     //测试消息
-    public static String testMsg = "sss";
     private BigInteger privateKey;  // 服务器私钥
     private BigInteger publicKey;   // 服务器公钥
     private BigInteger sharedKey;   // 共享密钥

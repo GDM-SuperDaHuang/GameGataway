@@ -8,6 +8,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.security.SecureRandom;
 
 public class HKDFMsssage {
+
     // 假设通过 DH 交换得到的共享密钥 K（示例用随机值模拟）
     public static void main(String[] args) {
         int k = 32;
