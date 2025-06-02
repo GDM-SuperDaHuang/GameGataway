@@ -14,7 +14,7 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import java.util.ArrayList;
 
 
-public class ForwardClient {
+public class  ForwardClient {
     private final EventLoopGroup forwardingGroup;
     private final Bootstrap bootstrap = new Bootstrap();
     private final TargetServerHandler targetServerHandler = new TargetServerHandler();

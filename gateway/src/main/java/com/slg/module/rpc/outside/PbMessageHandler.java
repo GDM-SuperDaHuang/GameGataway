@@ -42,6 +42,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
     ServerChannelManage serverChannelManage = ServerChannelManage.getInstance();
     ClientChannelManage clientChannelManage = ClientChannelManage.getInstance();
     GatewayRoutingManager gatewayRoutingManager = GatewayRoutingManager.getInstance();
+    ForwardClient forwardClient = ForwardClient.getInstance();
 
     public PbMessageHandler(int gateProtoIdMax) {
         this.gateProtoIdMax = gateProtoIdMax;
@@ -143,8 +144,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
             Message message = responseBody.buildPartial();
             //构建响应消息体，失败时，或者没有发送出去都需要手动释放
             ByteBuf respBody = clientChannel.alloc().buffer(message.getSerializedSize());
-            //回收 MsgResponse
-            response.recycle();
+
             try {
                 message.writeTo(new OutputStream() {
                     @Override
@@ -195,6 +195,8 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
                 compressBuf.release();
                 respBody.release();
                 ByteBuf out = MsgUtil.buildClientMsg(clientChannel, msg.getCid(), response.getErrorCode(), protocolId, Constants.Zip, Constants.Encrypted, encryptedLength, encryptedBuf);
+                //回收 MsgResponse
+                response.recycle();
                 ChannelFuture channelFuture = clientChannel.writeAndFlush(out);
                 channelFuture.addListener(future -> {
                     msg.recycle();
@@ -228,6 +230,8 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
                 //释放
                 respBody.release();
                 ByteBuf out = MsgUtil.buildClientMsg(clientChannel, msg.getCid(), response.getErrorCode(), protocolId, Constants.NoZip, Constants.Encrypted, encryptedLength, encryptedBuf);
+                //回收 MsgResponse
+                response.recycle();
                 ChannelFuture channelFuture = clientChannel.writeAndFlush(out);
                 channelFuture.addListener(future -> {
                     msg.recycle();
@@ -242,6 +246,9 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
                 short zipLength = (short) compressBuf.readableBytes();
                 if (zipLength < bodyLength) {
                     ByteBuf out = MsgUtil.buildClientMsg(clientChannel, msg.getCid(), response.getErrorCode(), protocolId, Constants.Zip, Constants.NoEncrypted, zipLength, compressBuf);
+                    //回收 MsgResponse
+                    response.recycle();
+                    respBody.release();
                     ChannelFuture channelFuture = clientChannel.writeAndFlush(out);
                     channelFuture.addListener(future -> {
                         msg.recycle();
@@ -253,6 +260,8 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
                 } else {
                     compressBuf.release();
                     ByteBuf out = MsgUtil.buildClientMsg(clientChannel, msg.getCid(), response.getErrorCode(), protocolId, Constants.NoZip, Constants.NoEncrypted, bodyLength, respBody);
+                    //回收 MsgResponse
+                    response.recycle();
                     ChannelFuture channelFuture = clientChannel.writeAndFlush(out);
                     channelFuture.addListener(future -> {
                         msg.recycle();
@@ -265,6 +274,8 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
 
             } else {// 什么也不干
                 ByteBuf out = MsgUtil.buildClientMsg(clientChannel, msg.getCid(), response.getErrorCode(), protocolId, Constants.NoZip, Constants.NoEncrypted, bodyLength, respBody);
+                //回收 MsgResponse
+                response.recycle();
                 ChannelFuture channelFuture = clientChannel.writeAndFlush(out);
                 channelFuture.addListener(future -> {
                     msg.recycle();
@@ -288,60 +299,6 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
             failedNotificationClient(clientChannel, msg, ErrorCodeConstants.NOT_LOGGED_IN);
         }
     }
-
-//    @Override
-//    protected void channelRead0(ChannelHandlerContext clientChannel, ByteBufferMessage msg) throws Exception {
-//        int protocolId = msg.getProtocolId();
-//        ByteBuf byteBuf = msg.getBody();
-//        ChannelId channelId = clientChannel.channel().id();
-//        Long userId = clientChannelManage.getUserId(channelId);
-//        ByteBuffer body = byteBuf.nioBuffer();//视图,可能是原始数据
-//        if (protocolId < gateProtoIdMax) {//本地
-//            Method parse = handlePbBeanManager.getParseFromMethod(msg.getProtocolId());
-//            Object msgObject = parse.invoke(null, body);
-//            MsgResponse response = route(clientChannel, msgObject, protocolId, userId);
-//            //写回
-//            GeneratedMessage.Builder<?> responseBody = response.getBody();
-//            Message message = responseBody.buildPartial();
-//            //构建响应消息体，失败时，或者没有发送出去都需要手动释放
-//            ByteBuf respBody = clientChannel.alloc().buffer(message.getSerializedSize());
-//            //回收 MsgResponse
-//            response.recycle();
-//            message.writeTo(new OutputStream() {
-//                @Override
-//                public void write(int b) {
-//                    respBody.writeByte(b);
-//                }
-//
-//                @Override
-//                public void write(byte[] b, int off, int len) {
-//                    respBody.writeBytes(b, off, len);
-//                }
-//            });
-//            short bodyLength = (short) respBody.readableBytes(); // 这里获取长度
-//            ByteBuf out = MsgUtil.buildClientMsg(clientChannel, msg.getCid(), response.getErrorCode(), protocolId, Constants.NoZip, Constants.NoEncrypted, bodyLength, respBody);
-//            ChannelFuture channelFuture = clientChannel.writeAndFlush(out);
-//            channelFuture.addListener(future -> {
-//                msg.recycle();
-//                if (!future.isSuccess()) {
-//                    out.release();
-//                    System.err.println("Write and flush failed: " + future.cause());
-//                }
-//            });
-////            TestMsg.getInstance(protocolId).printStats();
-//        } else if (userId != null) {//转发
-//            // todo gatewayRoutingManager使用注册中心代替
-//            ServerConfig serverConfig = gatewayRoutingManager.getServer(protocolId, userId, 0);
-//            if (serverConfig == null) {
-//                // 转发失败,直接返回，告诉客户端
-//                failedNotificationClient(clientChannel, msg, ErrorCodeConstants.ESTABLISH_CONNECTION_FAILED);
-//                return;
-//            }
-//            forwardToTargetServer(clientChannel, msg, userId, serverConfig);
-//        } else {
-//            failedNotificationClient(clientChannel, msg, ErrorCodeConstants.NOT_LOGGED_IN);
-//        }
-//    }
 
     /**
      * 发送时:先压缩后加密原则
@@ -612,7 +569,7 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
             // 获取当前 serverId 对应的专用锁对象
             Object lock = SERVER_LOCKS.computeIfAbsent(serverConfig.getServerId(), k -> new Object());
             synchronized (lock) {
-                channel = ForwardClient.getInstance().connection(serverConfig);
+                channel = forwardClient.connection(serverConfig);
             }
         }
         //进行转发到目标服务器
@@ -689,8 +646,6 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
         ChannelFuture channelFuture = serverChannel.writeAndFlush(out);
         channelFuture.addListener((ChannelFutureListener) future -> {
             if (future.isSuccess()) {
-                //释放
-                msg.recycle();
             } else {
                 // 消息转发失败的处理
                 // log.error("Failed to forward message to {}", targetServerAddress, future.cause());

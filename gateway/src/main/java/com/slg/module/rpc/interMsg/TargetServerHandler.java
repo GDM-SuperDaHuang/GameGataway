@@ -39,13 +39,12 @@ public class TargetServerHandler extends SimpleChannelInboundHandler<ByteBufferS
         Channel clientChannel = clientChannelManage.getChannelByUserId(userId);
         if (clientChannel != null) {
             ByteBuf out = MsgUtil.buildClientMsg(ctx, msg.getCid(), msg.getErrorCode(), msg.getProtocolId(), msg.getZip(), msg.getEncrypted(), msg.getLength(), body);
-            clientChannel.writeAndFlush(out)
-                    .addListener(future -> {
-                        msg.recycle();
-                        if (!future.isSuccess()) {//客户端连接丢失
-                            System.err.println("Write and flush failed: " + future.cause());
-                        }
-                    });
+            clientChannel.writeAndFlush(out).addListener(future -> {
+
+                if (!future.isSuccess()) {//客户端连接丢失
+                    System.err.println("Write and flush failed: " + future.cause());
+                }
+            });
         } else {
             //todo 没有连接，警告处理，记录失败
             msg.recycle();
