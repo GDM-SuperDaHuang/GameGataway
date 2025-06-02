@@ -1,40 +1,101 @@
 package com.slg.module.connection;
 
+import com.slg.module.util.SystemTimeCache;
 import io.netty.channel.Channel;
-import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 目标服务器内部消息管理
  */
-@Component
 public class ServerChannelManage {
-    //目标服务器连接管理
-    private Map<Byte, Channel> serverChannelMap = new ConcurrentHashMap<>();//<serverId,channel>
-    private Map<Byte, ServerConfig> serverConfigMap = new HashMap<>();////<serverId,ServerConfig>
+    private static ServerChannelManage instance;
+    //目标服务器连接管理 connectionId = serverId * BASE + next
+    private static final Map<Integer, Channel> serverChannelMap = new HashMap<>();//<connectionId,channel>
+    private static final Map<Integer, Integer> serverMaxMap = new HashMap<>();//<serverId,max>
 
-    public Channel getChanelByIp(Byte serverId) {
-        return serverChannelMap.getOrDefault(serverId, null);
+    private final static int BASE = 1000;
+
+    // 私有构造函数
+    private ServerChannelManage() {
     }
 
-    public Channel removeChanelByIp(Byte serverId) {
-        Channel remove = serverChannelMap.remove(serverId);
-        serverConfigMap.remove(serverId);
-        return remove;
+    // 双重检查锁定获取实例
+    public static ServerChannelManage getInstance() {
+        if (instance == null) {
+            synchronized (ClientChannelManage.class) {
+                if (instance == null) {
+                    instance = new ServerChannelManage();
+                }
+            }
+        }
+        return instance;
     }
 
-    public void put(Byte serverId, Channel channel, ServerConfig serverConfig) {
-        serverChannelMap.put(serverId, channel);
-        serverConfigMap.put(serverId, new ServerConfig(serverId, serverConfig.getHost(), serverConfig.getPort()));
+
+    //todo 负债均衡
+
+    /**
+     * 可以新建立连接
+     *
+     * @param serverId
+     * @return null--需要添加连接
+     */
+    public Channel getChanel(int serverId) {
+        Integer sum = serverMaxMap.getOrDefault(serverId, null);
+        if (sum == null) {
+            return null;
+        }
+        int d = (int) (SystemTimeCache.currentTimeMillis() % sum);
+        int connectionId = serverId * BASE + d;
+        return serverChannelMap.get(connectionId);
     }
 
-    public ServerChannelManage() {
+    /**
+     * 服务器标识符：serverId
+     *
+     * @param serverId 服务器标识符， 移除所有的连接
+     */
+    public ArrayList<Channel> removeServerChanel(int serverId) {
+        ArrayList<Channel> channels = new ArrayList<>();
+        for (Map.Entry<Integer, Channel> entry : serverChannelMap.entrySet()) {
+            Integer connectionId = entry.getKey();
+            if (connectionId >= serverId * BASE && connectionId <= serverId * BASE + BASE - 1) {
+                Channel remove = serverChannelMap.remove(connectionId);
+                channels.add(remove);
+            }
+        }
+        return channels;
     }
 
-    public Map<Byte, ServerConfig> getServerConfigMap() {
-        return serverConfigMap;
+    public void addChannel(int serverId, int connectionId, Channel channel) {
+        serverChannelMap.put(connectionId, channel);
+        updateServer(serverId);
     }
+
+    //记录serverId的连接数目
+    public void updateServer(int serverId) {
+        int orDefault = serverMaxMap.getOrDefault(serverId, 0);
+        orDefault++;
+        serverMaxMap.put(serverId, orDefault);
+    }
+
+
+    //1开始
+    public int nextChannelId(int serverId) {
+        int max = 0;
+        for (Map.Entry<Integer, Channel> entry : serverChannelMap.entrySet()) {
+            Integer connectionId = entry.getKey();
+            if (connectionId >= serverId * BASE && connectionId <= serverId * BASE + BASE - 1) {
+                max = connectionId;
+            }
+        }
+        if (max == 0) {
+            return BASE * serverId;
+        }
+        return max + 1;
+    }
+
 }

@@ -1,7 +1,7 @@
 package com.slg.module.connection;
 
 import io.netty.channel.Channel;
-import org.springframework.stereotype.Component;
+import io.netty.channel.ChannelId;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,10 +9,27 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 客户端连接管理
  */
-@Component
 public class ClientChannelManage {
+    private static ClientChannelManage instance;
+
+    // 私有构造函数
+    private ClientChannelManage() {
+    }
+
+    // 双重检查锁定获取实例
+    public static ClientChannelManage getInstance() {
+        if (instance == null) {
+            synchronized (ClientChannelManage.class) {
+                if (instance == null) {
+                    instance = new ClientChannelManage();
+                }
+            }
+        }
+        return instance;
+    }
+
     //客户端连接管理
-    private final Map<Channel, Long> channelUserIdMap = new ConcurrentHashMap<>();//channel-userId
+    private final Map<ChannelId, Long> channelUserIdMap = new ConcurrentHashMap<>();//channel-userId
     private final Map<Long, Channel> userIdChannelMap = new ConcurrentHashMap<>();//userId-channel
 
     //心跳
@@ -20,7 +37,7 @@ public class ClientChannelManage {
 
     //todo 删除密钥
     //加密密钥
-    private final Map<Channel, DHKeyInfo> ipCipherMap = new ConcurrentHashMap<>();//ipInfo-key共享密钥
+    private final Map<ChannelId, DHKeyInfo> ipCipherMap = new ConcurrentHashMap<>();//ipInfo-key共享密钥
     private final Map<Long, DHKeyInfo> userIdCipherMap = new ConcurrentHashMap<>();//userID-key共享密钥
 
     //todo 删除服务器
@@ -31,24 +48,22 @@ public class ClientChannelManage {
         return userGroupServerMap;
     }
 
-    public ClientChannelManage() {
-    }
-
     public void put(Channel channel, Long userId) {
-        channelUserIdMap.put(channel, userId);
+        channelUserIdMap.put(channel.id(), userId);
         userIdChannelMap.put(userId, channel);
     }
 
+    //todo
     public void updateHearTime(Long userId, Long time) {
-        timeHeartMap.put(userId, userId);
+        timeHeartMap.put(userId, time);
     }
 
     public Long getHearTime(Long userId) {
         return timeHeartMap.getOrDefault(userId, 0L);
     }
 
-    public Long getUserId(Channel channel) {
-        return channelUserIdMap.getOrDefault(channel, 0L);
+    public Long getUserId(ChannelId channelId) {
+        return channelUserIdMap.getOrDefault(channelId, null);
     }
 
     public void putCipher(Long userId, DHKeyInfo k) {
@@ -56,15 +71,15 @@ public class ClientChannelManage {
     }
 
     public DHKeyInfo getCipher(Long userId) {
-        return userIdCipherMap.get(userId);
+        return userIdCipherMap.getOrDefault(userId,null);
     }
 
-    public void putCipher(Channel channel, DHKeyInfo k) {
-        ipCipherMap.put(channel, k);
+    public void putCipher(ChannelId channelId, DHKeyInfo k) {
+        ipCipherMap.put(channelId, k);
     }
 
-    public DHKeyInfo getCipher(String ip) {
-        return ipCipherMap.get(ip);
+    public DHKeyInfo getCipher(ChannelId channelId) {
+        return ipCipherMap.get(channelId);
     }
 
     public Channel getChannelByUserId(Long userId) {
@@ -81,8 +96,8 @@ public class ClientChannelManage {
     }
 
     //密钥删除 todo
-    public void removeKey(Channel channel,long userId) {
-        ipCipherMap.remove(channel);
+    public void removeKey(ChannelId channelId, long userId) {
+        ipCipherMap.remove(channelId);
         userIdCipherMap.remove(userId);
     }
 

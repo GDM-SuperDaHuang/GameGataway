@@ -1,18 +1,14 @@
 package com.slg.module.rpc.interMsg;
 
+import com.slg.module.config.GatewayRoutingManager;
 import com.slg.module.connection.ClientChannelManage;
 import com.slg.module.connection.ServerChannelManage;
 import com.slg.module.connection.ServerConfig;
 import com.slg.module.message.ByteBufferServerMessage;
 import com.slg.module.message.MsgUtil;
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.channel.*;
 import io.netty.handler.codec.DecoderException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
@@ -23,15 +19,10 @@ import java.util.Map;
 /**
  * 目标服务器--网关
  */
-@Component
 @ChannelHandler.Sharable
 public class TargetServerHandler extends SimpleChannelInboundHandler<ByteBufferServerMessage> {
-    @Autowired
-    private ClientChannelManage channelManage;
-    //目标服务器--网关管理
-    @Autowired
-    private ServerChannelManage serverChannelManage;
 
+    ClientChannelManage clientChannelManage = ClientChannelManage.getInstance();
 
     /**
      * 接收目标服务器数据
@@ -45,16 +36,14 @@ public class TargetServerHandler extends SimpleChannelInboundHandler<ByteBufferS
         long userId = msg.getUserId();
         ByteBuf body = msg.getBody();
         //转发回给客户端
-        Channel clientChannel = channelManage.getChannelByUserId(userId);
+        Channel clientChannel = clientChannelManage.getChannelByUserId(userId);
         if (clientChannel != null) {
-            ByteBuf out = MsgUtil.buildClientMsg(msg.getCid(), msg.getErrorCode(), msg.getProtocolId(), msg.getZip(), msg.getEncrypted(),msg.getLength(), body);
+            ByteBuf out = MsgUtil.buildClientMsg(ctx, msg.getCid(), msg.getErrorCode(), msg.getProtocolId(), msg.getZip(), msg.getEncrypted(), msg.getLength(), body);
             clientChannel.writeAndFlush(out)
                     .addListener(future -> {
+                        msg.recycle();
                         if (!future.isSuccess()) {//客户端连接丢失
                             System.err.println("Write and flush failed: " + future.cause());
-                            msg.recycle();
-                        }else {
-                            msg.recycle();
                         }
                     });
         } else {
@@ -87,11 +76,13 @@ public class TargetServerHandler extends SimpleChannelInboundHandler<ByteBufferS
         SocketAddress socketAddress = ctx.channel().remoteAddress();
         int port = ((InetSocketAddress) socketAddress).getPort();
         String ip = ((InetSocketAddress) socketAddress).getHostString();
-        Map<Byte, ServerConfig> serverConfigMap = serverChannelManage.getServerConfigMap();
-        for (Map.Entry<Byte, ServerConfig> entry : serverConfigMap.entrySet()) {
+        //todo
+        Map<Byte, ServerConfig> serverMap = GatewayRoutingManager.getInstance().getServerMap();
+        for (Map.Entry<Byte, ServerConfig> entry : serverMap.entrySet()) {
             ServerConfig config = entry.getValue();
             if (config.getHost().equals(ip) && config.getPort() == port) {
-                serverChannelManage.removeChanelByIp(config.getServerId());
+                int serverId = config.getServerId();
+                ServerChannelManage.getInstance().removeServerChanel(serverId);
             }
         }
         System.out.println("内部服务器关闭连接：" + socketAddress);

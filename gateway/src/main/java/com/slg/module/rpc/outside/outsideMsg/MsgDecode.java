@@ -55,7 +55,7 @@ public class MsgDecode extends ByteToMessageDecoder {
         int protocolId = in.readInt();
         byte zip = in.readByte();
         byte encrypted = in.readByte();
-        short length = in.readShort();
+        short length = in.readShort();//边界消息长度，可能不是原始的
         // 检查是否有足够的字节来读取整个消息体
         if (readableBytes < 16 + length) {
             // 如果没有，丢弃已经读取的头部信息，并返回

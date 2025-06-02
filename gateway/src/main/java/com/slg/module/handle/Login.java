@@ -8,15 +8,17 @@ import com.slg.module.connection.DHKeyInfo;
 import com.slg.module.message.ErrorCodeConstants;
 import com.slg.module.message.MsgResponse;
 import com.slg.module.pools.Pools;
+import com.slg.module.util.CryptoUtils;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
-import org.springframework.beans.factory.annotation.Autowired;
+
 import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -27,13 +29,11 @@ import static message.Account.*;
 //用户登录
 @ToServer
 public class Login {
-    @Autowired
-    private ClientChannelManage clientchannelManage;
-    public static String testMsg = "sss";
+    public static String testMsg = "123456";
 
     // 密钥交换
     @ToMethod(value = 2)
-    public MsgResponse keyExchangeHandle(ChannelHandlerContext ctx, KeyExchangeReq request,long userId) {
+    public MsgResponse keyExchangeHandle(ChannelHandlerContext ctx, KeyExchangeReq request, Long userId) {
         BigInteger g = new BigInteger(request.getG().toByteArray());
         BigInteger p = new BigInteger(request.getP().toByteArray());
         BigInteger clientPublicKey = new BigInteger(request.getPublicKey().toByteArray());
@@ -52,10 +52,10 @@ public class Login {
         //保存密钥信息
 //        SocketAddress socketAddress = ctx.channel().remoteAddress();
 //        String ip = ((InetSocketAddress) socketAddress).getHostString();
-        clientchannelManage.putCipher(ctx.channel(), new DHKeyInfo(b, B, K));
+        ClientChannelManage.getInstance().putCipher(ctx.channel().id(), new DHKeyInfo(b, B, K));
 
         ByteString serverPublicKey = ByteString.copyFrom(B.toByteArray());
-
+        int i = serverPublicKey.hashCode();
         KeyExchangeResp.Builder builder = KeyExchangeResp.newBuilder()
                 .setPublicKey(serverPublicKey);
 
@@ -63,54 +63,44 @@ public class Login {
 //        KeyExchangeResp.Builder builder = Pools.KeyExchangeRespPOOL.borrow()
 //                .setPublicKey(serverPublicKey);
         MsgResponse msgResponse = MsgResponse.newInstance(builder);
-        Pools.KeyExchangeRespPOOL.release(builder);
+//        Pools.KeyExchangeRespPOOL.release(builder);
         return msgResponse;
     }
 
     // 密钥验证
     @ToMethod(value = 3)//todo
-    public MsgResponse keyVerificationHandle(ChannelHandlerContext ctx, KeyVerificationReq request, long userId) throws Exception {
-        DHKeyInfo keyInfo = clientchannelManage.getCipher("");
+    public MsgResponse keyVerificationHandle(ChannelHandlerContext ctx, KeyVerificationReq request, Long userId) throws Exception {
+        DHKeyInfo keyInfo = ClientChannelManage.getInstance().getCipher(ctx.channel().id());
         if (keyInfo == null) {
             return MsgResponse.newInstance(ErrorCodeConstants.INVALID_PARAMETER);
         }
+
+        ByteString testMessage = request.getTestMessage();
         // 3. 获取约定的固定测试消息 (实际应用中应该从配置或常量获取)
-        byte[] fixedMessageBytes = testMsg.getBytes(StandardCharsets.UTF_8);
 
-        // 4. 使用共享密钥加密固定消息（服务器端）
-        // 4.1 派生加密密钥
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        byte[] keyBytes = digest.digest(keyInfo.getSharedKey().toByteArray());
-        SecretKeySpec aesKey = new SecretKeySpec(keyBytes, "AES");
-
-        // 4.2 使用AES加密
-        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        byte[] iv = new byte[12]; // 实际应用中应该使用随机IV
-        GCMParameterSpec spec = new GCMParameterSpec(128, iv);
-        cipher.init(Cipher.ENCRYPT_MODE, aesKey, spec);
-        byte[] serverEncrypted = cipher.doFinal(fixedMessageBytes);
-
-        // 5. 获取客户端加密的消息
-        byte[] clientEncrypted = request.getTestMessage().toByteArray();
-
+        String string = testMessage.toString();
+//        System.out.println("Decrypted test message: " + string);
         // 6. 比较两个加密结果
-        boolean success = MessageDigest.isEqual(serverEncrypted, clientEncrypted);
-        ByteString serverEncrypteds = ByteString.copyFrom(serverEncrypted);
         // 7. 构建响应
+
+        //
+        String respMsg = "啦啦啦啦啦";
+        ByteBuf byteBuf = Unpooled.wrappedBuffer(respMsg.getBytes());
+        ByteString respMsg00 = ByteString.copyFrom(byteBuf.nioBuffer());
         KeyVerificationResp.Builder builder = KeyVerificationResp.newBuilder()
-                .setSuccess(success)
-                .setEncryptedEcho(serverEncrypteds)
-                .setErrorMessage(success ? "验证成功" : "验证失败");
-        MsgResponse msgResponse = MsgResponse.newInstance(builder);
+                .setSuccess(true)
+                .setEncryptedEcho(respMsg00);
+//                .setErrorMessage(testMsg ? "验证成功" : "验证失败");
+        MsgResponse msgResponse = MsgResponse.newInstance(builder,false);
         return msgResponse;
     }
 
     //登录
     @ToMethod(value = 4)
-    public MsgResponse loginHandle(ChannelHandlerContext ctx, LoginReq request, long userId) throws IOException, InterruptedException {
-        clientchannelManage.put(ctx.channel(), 122111L);
+    public MsgResponse loginHandle(ChannelHandlerContext ctx, LoginReq request, Long userId) throws IOException, InterruptedException {
+        ClientChannelManage.getInstance().put(ctx.channel(), 122111L);
         LoginResp.Builder builder = LoginResp.newBuilder()
-                .setPlayerId("111L");
+                .setPlayerId("1112223334445556667778889991111111111111111111111111111111111111111111111111111111111111111111111111111L");
 //        LoginResp.Builder builder = Pools.LoginRespPOOL.borrow()
 //                .setPlayerId("1111L");
         MsgResponse msgResponse = MsgResponse.newInstance(builder);
