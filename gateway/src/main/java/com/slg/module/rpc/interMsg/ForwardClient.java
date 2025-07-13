@@ -1,7 +1,7 @@
 package com.slg.module.rpc.interMsg;
 
+import com.slg.module.config.ServerConfig;
 import com.slg.module.connection.ServerChannelManage;
-import com.slg.module.connection.ServerConfig;
 import com.slg.module.util.ConfigReader;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
@@ -14,12 +14,15 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import java.util.ArrayList;
 
 
-public class  ForwardClient {
+public class ForwardClient {
     private final EventLoopGroup forwardingGroup;
     private final Bootstrap bootstrap = new Bootstrap();
     private final TargetServerHandler targetServerHandler = new TargetServerHandler();
-    private final int connectionMin;
-    private final int connectionMax;
+//    private final QPSCountHandler qpsCountHandler = new QPSCountHandler();
+    public final int connectionMin;
+    public final int connectionMax;
+
+
 
 
     // 静态内部类持有单例
@@ -47,6 +50,13 @@ public class  ForwardClient {
         } else {
             forwardingGroup = new NioEventLoopGroup(1);
         }
+        // 注册QPS统计任务到EventLoop
+//        forwardingGroup.next().scheduleAtFixedRate(qpsCountHandler::updateQPS(), 1, 1, java.util.concurrent.TimeUnit.SECONDS);
+
+        // QPS 监控器
+        QPSMonitor qpsMonitor = QPSMonitor.getInstance();
+        qpsMonitor.start(forwardingGroup.next());
+
         bootstrap.group(forwardingGroup)
                 .channel(NioSocketChannel.class)
                 .option(ChannelOption.TCP_NODELAY, true)
@@ -63,12 +73,12 @@ public class  ForwardClient {
 
     }
 
+
     /**
-     * 建立连接
+     * 使用异步建立连接，第一次建立时会有延迟。
      */
     public Channel connection(ServerConfig serverConfig) {
         ServerChannelManage instance = ServerChannelManage.getInstance();
-        int connectionId = instance.nextChannelId(serverConfig.getServerId());
 //        //同步阻塞
 //        try {
 //            ChannelFuture sync = bootstrap.connect(serverConfig.getHost(), serverConfig.getPort()).sync();
@@ -83,8 +93,13 @@ public class  ForwardClient {
         ChannelFuture channelFuture = bootstrap.connect(serverConfig.getHost(), serverConfig.getPort()).addListener(f -> {
             if (f.isSuccess()) {
                 Channel channel = ((ChannelFuture) f).channel();
+                int connectionId = instance.nextChannelId(serverConfig.getServerId());
+                if (instance.isContainConnectionId(connectionId)){
+                    channel.close();
+                    return;
+                }
                 instance.addChannel(serverConfig.getServerId(), connectionId, channel);
-                System.out.println("服务器标识符:+" + serverConfig.getServerId() + "+  成功建立连接 [" + "生成serverId:" + connectionId + "] -> " + serverConfig.getHost() + ":" + serverConfig.getPort());
+                System.out.println("服务器标识符:" + serverConfig.getServerId() + "+  成功建立连接 [" + "生成serverId:" + connectionId + "] -> " + serverConfig.getHost() + ":" + serverConfig.getPort());
             } else {
                 System.err.println("连接目标服务器失败: " + serverConfig.getHost() + ":" + serverConfig.getPort() + ", 原因: " + f.cause());
             }
@@ -109,9 +124,10 @@ public class  ForwardClient {
             });
         }
     }
-
     public void shutdown() {
         System.out.println("----------------------------关闭所有连接--------------------------------------------");
         forwardingGroup.shutdownGracefully().syncUninterruptibly(); // 阻塞直到关闭完成
     }
+
+
 }

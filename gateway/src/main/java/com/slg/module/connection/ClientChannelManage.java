@@ -3,6 +3,7 @@ package com.slg.module.connection;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelId;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -28,6 +29,7 @@ public class ClientChannelManage {
         return instance;
     }
 
+
     //客户端连接管理
     private final Map<ChannelId, Long> channelUserIdMap = new ConcurrentHashMap<>();//channel-userId
     private final Map<Long, Channel> userIdChannelMap = new ConcurrentHashMap<>();//userId-channel
@@ -41,11 +43,17 @@ public class ClientChannelManage {
     private final Map<Long, DHKeyInfo> userIdCipherMap = new ConcurrentHashMap<>();//userID-key共享密钥
 
     //todo 删除服务器
-    //用户服务器负载均衡
-    Map<Long, Map<Byte, Byte>> userGroupServerMap = new ConcurrentHashMap<>();//userId--groupId--ServerId
+    //用户服务器负载均衡，用户习惯
+    Map<Long, Map<Integer, Integer>> userGroupServerMap = new ConcurrentHashMap<>();//userId--groupId--ServerId
 
-    public Map<Long, Map<Byte, Byte>> getUserGroupServerMap() {
+    public Map<Long, Map<Integer, Integer>> getUserGroupServerMap() {
         return userGroupServerMap;
+    }
+
+    public void putUserGroupServerMap(Long userId, Integer groupId, Integer serverId) {
+        Map<Integer, Integer> orDefault = userGroupServerMap.getOrDefault(userId, new HashMap<>());
+        orDefault.put(groupId, serverId);
+        userGroupServerMap.put(userId, orDefault);
     }
 
     public void put(Channel channel, Long userId) {
@@ -71,7 +79,7 @@ public class ClientChannelManage {
     }
 
     public DHKeyInfo getCipher(Long userId) {
-        return userIdCipherMap.getOrDefault(userId,null);
+        return userIdCipherMap.getOrDefault(userId, null);
     }
 
     public void putCipher(ChannelId channelId, DHKeyInfo k) {
@@ -86,11 +94,13 @@ public class ClientChannelManage {
         return userIdChannelMap.getOrDefault(userId, null);
     }
 
+
     // 断开连接时
     public void remove(Channel channel) {
-        Long userId = channelUserIdMap.remove(channel);
+        Long userId = channelUserIdMap.remove(channel.id());
         if (userId != null) {
             userIdChannelMap.remove(userId);
+            //断开删除习惯
             removeServerInfo(userId);
         }
     }

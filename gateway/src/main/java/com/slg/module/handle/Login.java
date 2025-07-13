@@ -7,20 +7,12 @@ import com.slg.module.connection.ClientChannelManage;
 import com.slg.module.connection.DHKeyInfo;
 import com.slg.module.message.ErrorCodeConstants;
 import com.slg.module.message.MsgResponse;
-import com.slg.module.pools.Pools;
-import com.slg.module.util.CryptoUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 
-import javax.crypto.Cipher;
-import javax.crypto.SecretKey;
-import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.security.SecureRandom;
 
 import static message.Login.*;
@@ -91,14 +83,16 @@ public class Login {
                 .setSuccess(true)
                 .setEncryptedEcho(respMsg00);
 //                .setErrorMessage(testMsg ? "验证成功" : "验证失败");
-        MsgResponse msgResponse = MsgResponse.newInstance(builder,false);
+        MsgResponse msgResponse = MsgResponse.newInstance(builder, false);
         return msgResponse;
     }
 
     //登录
     @ToMethod(value = 4)
     public MsgResponse loginHandle(ChannelHandlerContext ctx, LoginReq request, Long userId) throws IOException, InterruptedException {
-        ClientChannelManage.getInstance().put(ctx.channel(), 122111L);
+        Long userid = Long.valueOf(request.getAccount());
+        userid = 123L;
+        ClientChannelManage.getInstance().put(ctx.channel(), userid);
         LoginResp.Builder builder = LoginResp.newBuilder()
                 .setPlayerId("1112223334445556667778889991111111111111111111111111111111111111111111111111111111111111111111111111111L");
 //        LoginResp.Builder builder = Pools.LoginRespPOOL.borrow()

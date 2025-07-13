@@ -1,6 +1,5 @@
 package com.slg.module;
 
-import com.slg.module.rpc.interMsg.ForwardClient;
 import com.slg.module.rpc.outside.GatewayServer;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -15,6 +14,7 @@ public class EntranceApplication {
         System.out.println("网关服务器开始启动.......");
         // 设置泄漏检测级别（建议在开发环境使用）
 		System.setProperty("io.netty.leakDetection.level", "PARANOID");
+
         ConfigurableApplicationContext context = SpringApplication.run(EntranceApplication.class, args);
         gatewayServer = new GatewayServer();
         gatewayServer.start(gatewayServer.getPort());

@@ -1,14 +1,12 @@
 package com.slg.module.message;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.Recycler;
-import io.netty.util.ReferenceCountUtil;
-import io.netty.util.Recycler.Handle;
-
 import java.util.Objects;
 
-
+/**
+ * 客户端与服务器之间协议
+ */
 public class ByteBufferMessage {
-    // 元数据字段
     private int cid;//顺序号
     private int errorCode;//错误码
     private int protocolId;//协议id
@@ -18,7 +16,6 @@ public class ByteBufferMessage {
     //private ByteBuffer body;//消息体
     private ByteBuf body; // 改用 ByteBuf 避免拷贝
 
-    // 使用 Netty Recycler 实现跨线程对象池
     private static final Recycler<ByteBufferMessage> RECYCLER = new Recycler<ByteBufferMessage>() {
         @Override
         protected ByteBufferMessage newObject(Handle<ByteBufferMessage> handle) {
@@ -26,60 +23,41 @@ public class ByteBufferMessage {
         }
     };
 
-    private final Handle<ByteBufferMessage> handle;
+    private final Recycler.Handle<ByteBufferMessage> handle; // final字段
 
-    private ByteBufferMessage(Handle<ByteBufferMessage> handle) {
+    // 必须的私有构造器
+    private ByteBufferMessage(Recycler.Handle<ByteBufferMessage> handle) {
         this.handle = Objects.requireNonNull(handle);
     }
 
-    /**
-     * 从对象池获取实例（线程安全）
-     */
-    public static ByteBufferMessage newInstance(int cid, int errorCode, int protocolId,
-                                                byte zip, byte encrypted, short length,
-                                                ByteBuf body) {
+    // 从对象池获取实例（传入 ByteBuf 直接引用）
+    public static ByteBufferMessage newInstance(int cid, int errorCode, int protocolId, byte zip, byte encrypted, short length, ByteBuf body) {
         ByteBufferMessage msg = RECYCLER.get();
-        // 重置对象状态（重要！避免旧数据残留）
-        msg.resetState();
-        // 设置新值
+        //测试命中
+//        TestMsg.getInstance(protocolId).testCount(msg);
         msg.cid = cid;
         msg.errorCode = errorCode;
         msg.protocolId = protocolId;
         msg.zip = zip;
         msg.encrypted = encrypted;
         msg.length = length;
-        msg.body = body;
+        msg.body = body; // 直接引用，不调用 retain()
+//        msg.body = body.touch();  // 记录泄漏检测信息
         return msg;
     }
 
-    /**
-     * 重置对象状态（供回收和复用使用）
-     */
-    private void resetState() {
+    // 回收对象
+    public void recycle() {
         cid = 0;
         errorCode = 0;
-        protocolId = 0;
-        zip = 0;
-        encrypted = 0;
-        length = 0;
-        // 安全释放 ByteBuf 资源
+//        protocolId = 0;
         if (body != null) {
-            ReferenceCountUtil.safeRelease(body);
+            body.release();
             body = null;
         }
-    }
-
-    /**
-     * 跨线程安全回收方法
-     */
-    public void recycle() {
-        // 重置状态但不立即释放资源（防止异步问题）
-        resetState();
-        // 提交到回收队列（跨线程安全）
         handle.recycle(this);
     }
 
-    // Getter 方法保持不变
     public short getLength() {
         return length;
     }

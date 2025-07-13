@@ -1,8 +1,11 @@
 package com.slg.module.rpc.outside;
 
+import com.slg.module.connection.ServerConfigManager;
+import com.slg.module.message.Constants;
 import com.slg.module.rpc.interMsg.ForwardClient;
 import com.slg.module.rpc.outside.outsideMsg.MsgDecode;
 import com.slg.module.util.ConfigReader;
+import com.slg.module.util.NacosClientUtil;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.epoll.Epoll;
@@ -14,25 +17,27 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
 import java.net.InetSocketAddress;
+import java.util.HashMap;
+import java.util.Map;
 
 public class GatewayServer {
     private final EventLoopGroup bossGroup;
-    private final static EventLoopGroup workerGroup = new NioEventLoopGroup(6);
+    private final static EventLoopGroup workerGroup = new NioEventLoopGroup();
     private final PbMessageHandler pbMessageHandler;
     private int port;
     private ChannelFuture serverChannelFuture;
 
-    LoggingHandler loggingHandler = new LoggingHandler(LogLevel.INFO);
-//    private final IdleStateHandler idleStateHandler = new IdleStateHandler(0, 30, 0, TimeUnit.SECONDS);
-//    private final IdleStateEventHandler idleStateEventHandler = new IdleStateEventHandler();
-
+    //    LoggingHandler loggingHandler = new LoggingHandler(LogLevel.INFO);
+    ConfigReader config = new ConfigReader("application.properties");
+    NacosClientUtil client = NacosClientUtil.getInstance(
+            config.getProperty("nacos.serverAddr"),  // Nacos服务器地址
+            config.getProperty("nacos.namespace")  // 命名空间ID（如为空字符串则使用默认命名空间）
+    );
 
     //初始化,获取配置值
     public GatewayServer() {
         try {
-            ConfigReader config = new ConfigReader("application.properties");
             port = config.getIntProperty("netty.server.port");
-            int protoIdMin = config.getIntProperty("server.proto-id-min");
             int protoIdMax = config.getIntProperty("server.proto-id-max");
             pbMessageHandler = new PbMessageHandler(protoIdMax);
         } catch (Exception e) {
@@ -66,8 +71,8 @@ public class GatewayServer {
                     protected void initChannel(SocketChannel ch) throws Exception {
                         ChannelPipeline p = ch.pipeline();
                         //日志
-                        p.addLast("log", loggingHandler);
-//                        p.addLast(QPSHandler.INSTANCE);
+//                        p.addLast("log", loggingHandler);
+                        p.addLast(QPSHandler.INSTANCE);
 
                         p.addLast(new MsgDecode());
                         p.addLast(pbMessageHandler);
@@ -79,23 +84,30 @@ public class GatewayServer {
         return serverChannelFuture.addListener(future -> {
             if (future.isSuccess()) {
                 System.out.println("===== 网关服务器启动成功，端口: " + port + " =====");
+                // 注册服务实例
+                Map<String, String> metadata = new HashMap<>();
+                String group = config.getProperty("nacos.service.group");
+                if (group == null) {
+                    group = "DEFAULT_GROUP";
+                }
+                String host = config.getProperty("netty.server.host");
+                String serverName = config.getProperty("nacos.service.name");
+                String pbMin = config.getProperty("server.proto-id-min");
+                String pbMax = config.getProperty("server.proto-id-max");
+                String serverId = config.getProperty("netty.server.serverId");//实例id
+                String groupId = config.getProperty("netty.server.group-id");//组
+                metadata.put(Constants.ProtoMinId, pbMin);
+                metadata.put(Constants.ProtoMaxId, pbMax);
+                metadata.put(Constants.GroupId, groupId);
+                client.registerInstance(serverId, serverName, group, host, port, 1.0, metadata);
+
+                ServerConfigManager.getInstance(serverName, group, null, serverId);
             } else {
                 System.err.println("!!!!! 网关服务器启动失败 !!!!!");
                 future.cause().printStackTrace();
                 System.exit(1); // 启动失败直接退出
             }
         });
-//            //zk注册
-////            toRegisterZK(port);
-//            System.out.println("=====服务器启动成功gatewayServer=====");
-//            serverChannelFuture.channel().closeFuture().sync();
-//        } catch (InterruptedException e) {
-//            throw new RuntimeException(e);
-//        } finally {
-//            System.out.println("----------------------------服务器关闭--------------------------------------------");
-//            workerGroup.shutdownGracefully();
-//            bossGroup.shutdownGracefully();
-//        }
     }
 
     /**

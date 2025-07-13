@@ -1,9 +1,9 @@
 package com.slg.module.rpc.interMsg;
 
 import com.slg.module.config.GatewayRoutingManager;
+import com.slg.module.config.ServerConfig;
 import com.slg.module.connection.ClientChannelManage;
 import com.slg.module.connection.ServerChannelManage;
-import com.slg.module.connection.ServerConfig;
 import com.slg.module.message.ByteBufferServerMessage;
 import com.slg.module.message.MsgUtil;
 import io.netty.buffer.ByteBuf;
@@ -40,7 +40,6 @@ public class TargetServerHandler extends SimpleChannelInboundHandler<ByteBufferS
         if (clientChannel != null) {
             ByteBuf out = MsgUtil.buildClientMsg(ctx, msg.getCid(), msg.getErrorCode(), msg.getProtocolId(), msg.getZip(), msg.getEncrypted(), msg.getLength(), body);
             clientChannel.writeAndFlush(out).addListener(future -> {
-
                 if (!future.isSuccess()) {//客户端连接丢失
                     System.err.println("Write and flush failed: " + future.cause());
                 }
@@ -67,6 +66,17 @@ public class TargetServerHandler extends SimpleChannelInboundHandler<ByteBufferS
         }
     }
 
+
+    // 处理连接断开（包括正常关闭和异常关闭）
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        destroyConnection(ctx);
+        ctx.close();
+        // 继续传播事件
+        super.channelInactive(ctx);
+
+    }
+
     /**
      * 关闭内部服务器连接
      */
@@ -75,15 +85,8 @@ public class TargetServerHandler extends SimpleChannelInboundHandler<ByteBufferS
         SocketAddress socketAddress = ctx.channel().remoteAddress();
         int port = ((InetSocketAddress) socketAddress).getPort();
         String ip = ((InetSocketAddress) socketAddress).getHostString();
-        //todo
-        Map<Byte, ServerConfig> serverMap = GatewayRoutingManager.getInstance().getServerMap();
-        for (Map.Entry<Byte, ServerConfig> entry : serverMap.entrySet()) {
-            ServerConfig config = entry.getValue();
-            if (config.getHost().equals(ip) && config.getPort() == port) {
-                int serverId = config.getServerId();
-                ServerChannelManage.getInstance().removeServerChanel(serverId);
-            }
-        }
+        Integer serverId = ServerChannelManage.getInstance().findServerByChanel(port, ip);
+        ServerChannelManage.getInstance().removeServerChanel(serverId);
         System.out.println("内部服务器关闭连接：" + socketAddress);
     }
 }

@@ -1,22 +1,23 @@
 package com.slg.module.connection;
 
+import com.slg.module.config.ServerConfig;
+import com.slg.module.rpc.interMsg.ForwardClient;
+import com.slg.module.rpc.interMsg.QPSMonitor;
 import com.slg.module.util.SystemTimeCache;
 import io.netty.channel.Channel;
 
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 目标服务器内部消息管理
  */
 public class ServerChannelManage {
     private static ServerChannelManage instance;
-    //目标服务器连接管理 connectionId = serverId * BASE + next
-    private static final Map<Integer, Channel> serverChannelMap = new HashMap<>();//<connectionId,channel>
-    private static final Map<Integer, Integer> serverMaxMap = new HashMap<>();//<serverId,max>
-
-    private final static int BASE = 1000;
 
     // 私有构造函数
     private ServerChannelManage() {
@@ -35,22 +36,64 @@ public class ServerChannelManage {
     }
 
 
+    private static final ConcurrentHashMap<Integer, Object> SERVER_LOCKS = new ConcurrentHashMap<>(1);
+
+    ForwardClient forwardClient = ForwardClient.getInstance();
+
+    //目标服务器连接管理 connectionId = serverId * BASE + next
+    private static final Map<Integer, Channel> serverChannelMap = new HashMap<>();//<connectionId,channel>
+    private static final Map<Integer, Integer> serverMaxMap = new HashMap<>();//<serverId,max>
+
+    private final static int BASE = 1000;
+
+    // QPS 记录
+    private final QPSMonitor monitor = QPSMonitor.getInstance();
+
+
     //todo 负债均衡
 
     /**
-     * 可以新建立连接
+     * 可以新建立连接，todo 监控流量需要接入
      *
-     * @param serverId
+     * @param server
      * @return null--需要添加连接
      */
-    public Channel getChanel(int serverId) {
-        Integer sum = serverMaxMap.getOrDefault(serverId, null);
-        if (sum == null) {
-            return null;
+    public Channel getChanel(ServerConfig server) {
+        int serverId = server.getServerId();
+        Integer sum = serverMaxMap.getOrDefault(serverId, 0);
+        long qps = monitor.getQPS(serverId);
+        if (sum >= forwardClient.connectionMax) {
+            int d = (int) (SystemTimeCache.currentTimeMillis() % sum);//sum==4,--->0,1,2,3
+            int connectionId = serverId * BASE + d;
+            //QPS 记录
+            monitor.record(serverId);
+            return serverChannelMap.get(connectionId);
         }
-        int d = (int) (SystemTimeCache.currentTimeMillis() % sum);
-        int connectionId = serverId * BASE + d;
-        return serverChannelMap.get(connectionId);
+
+        if (sum >= forwardClient.connectionMin) {//可能尝试建立,todo
+            if (qps > 20000) {
+                Object lock = SERVER_LOCKS.computeIfAbsent(server.getServerId(), k -> new Object());
+                synchronized (lock) {
+                    return forwardClient.connection(server);
+                }
+            }
+            int d = (int) (SystemTimeCache.currentTimeMillis() % sum);//sum==4,--->0,1,2,3
+            int connectionId = serverId * BASE + d;
+            //QPS 记录
+            monitor.record(serverId);
+            return serverChannelMap.get(connectionId);
+        }
+
+        // 初始化最小数目连接
+        Channel connection = null;
+        for (int i = 0; i < forwardClient.connectionMin; i++) {
+            // 获取当前 serverId 对应的专用锁对象
+            Object lock = SERVER_LOCKS.computeIfAbsent(server.getServerId(), k -> new Object());
+            synchronized (lock) {
+                connection = forwardClient.connection(server);
+            }
+        }
+        return connection;
     }
 
     /**
@@ -67,23 +110,57 @@ public class ServerChannelManage {
                 channels.add(remove);
             }
         }
+        serverMaxMap.remove(serverId);
         return channels;
     }
 
-    public void addChannel(int serverId, int connectionId, Channel channel) {
+
+    // 移除一条连接
+    public void removeOneChanel(int serverId) {
+        ArrayList<Channel> channels = new ArrayList<>();
+        int max = 0;
+        for (Map.Entry<Integer, Channel> entry : serverChannelMap.entrySet()) {
+            Integer connectionId = entry.getKey();
+            if (connectionId >= serverId * BASE && connectionId <= serverId * BASE + BASE - 1) {
+                if (max < connectionId) {
+                    max = connectionId;
+                }
+            }
+        }
+        serverChannelMap.remove(max);
+    }
+
+
+    //获取服务器Id
+    public Integer findServerByChanel(int port, String ip) {
+        int serverId = 0;
+        for (Map.Entry<Integer, Channel> entry : serverChannelMap.entrySet()) {
+            SocketAddress socketAddress = entry.getValue().remoteAddress();
+            int onePort = ((InetSocketAddress) socketAddress).getPort();
+            String oneIp = ((InetSocketAddress) socketAddress).getHostString();
+            if (oneIp.equals(ip) && onePort == port) {
+                serverId = entry.getKey();
+            }
+
+        }
+        serverId = serverId / BASE;
+        return serverId;
+    }
+
+    public void addChannel(Integer serverId, int connectionId, Channel channel) {
         serverChannelMap.put(connectionId, channel);
         updateServer(serverId);
     }
 
     //记录serverId的连接数目
-    public void updateServer(int serverId) {
+    public void updateServer(Integer serverId) {
         int orDefault = serverMaxMap.getOrDefault(serverId, 0);
         orDefault++;
         serverMaxMap.put(serverId, orDefault);
     }
 
 
-    //1开始
+    //0开始,获取下一个链接==BASE * serverId + 1
     public int nextChannelId(int serverId) {
         int max = 0;
         for (Map.Entry<Integer, Channel> entry : serverChannelMap.entrySet()) {
@@ -92,10 +169,21 @@ public class ServerChannelManage {
                 max = connectionId;
             }
         }
-        if (max == 0) {
+        if (max == 0) {//初次建立
             return BASE * serverId;
         }
         return max + 1;
     }
+
+    // 是否包含
+    public boolean isContainConnectionId(int connectionId) {
+        for (Map.Entry<Integer, Channel> entry : serverChannelMap.entrySet()) {
+            if (entry.getKey() - connectionId == 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 
 }

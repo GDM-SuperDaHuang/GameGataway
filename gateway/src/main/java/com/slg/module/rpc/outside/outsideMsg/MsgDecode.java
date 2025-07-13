@@ -5,10 +5,6 @@ import com.slg.module.message.ByteBufferMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
-import io.netty.handler.codec.CorruptedFrameException;
-
-import java.lang.reflect.Method;
-import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
@@ -64,6 +60,8 @@ public class MsgDecode extends ByteToMessageDecoder {
         }
         // 零拷贝切片（引用计数+1）
         ByteBuf body = in.readRetainedSlice(length);
-        out.add(ByteBufferMessage.newInstance(cid, errorCode, protocolId, zip, encrypted, length, body));
+        ByteBufferMessage message = ByteBufferMessage.newInstance(cid, errorCode, protocolId, zip, encrypted, length, body);
+        out.add(message);
+
     }
 }
