@@ -6,7 +6,7 @@
 ## 启动方式 
     clone GameGatewayServer，GameServer，GameCommon项目
     先在protobufFilem目录下执行脚本toJava.bat,然后对所有模块maven进行clean，install成功即可
-
+    nacos:docker版本：nacos/nacos-server:latest
 # 项目：
 # [GameCommon](GameCommon)
     公共模块:https://github.com/GDM-SuperDaHuang/GameCommon.git，protobuf文件，以及工具类的开发摘要 公共模块，protobuf文件，以及工具类的开发
