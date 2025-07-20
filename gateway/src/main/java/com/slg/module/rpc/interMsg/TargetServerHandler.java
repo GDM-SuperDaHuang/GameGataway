@@ -1,7 +1,5 @@
 package com.slg.module.rpc.interMsg;
 
-import com.slg.module.config.GatewayRoutingManager;
-import com.slg.module.config.ServerConfig;
 import com.slg.module.connection.ClientChannelManage;
 import com.slg.module.connection.ServerChannelManage;
 import com.slg.module.message.ByteBufferServerMessage;
@@ -9,12 +7,10 @@ import com.slg.module.message.MsgUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.handler.codec.DecoderException;
-
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
-import java.util.Map;
 
 /**
  * 目标服务器--网关

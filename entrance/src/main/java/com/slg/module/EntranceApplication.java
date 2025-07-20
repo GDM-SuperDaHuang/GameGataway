@@ -1,5 +1,6 @@
 package com.slg.module;
 
+
 import com.slg.module.rpc.outside.GatewayServer;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

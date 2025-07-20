@@ -22,15 +22,17 @@ import static message.Account.*;
 @ToServer
 public class Login {
     public static String testMsg = "123456";
+    SecureRandom random = new SecureRandom();
 
-    // 密钥交换
+    // 预计算常用DH参数（2048位安全参数）
+    // 密钥交换 比较耗时
     @ToMethod(value = 2)
     public MsgResponse keyExchangeHandle(ChannelHandlerContext ctx, KeyExchangeReq request, Long userId) {
         BigInteger g = new BigInteger(request.getG().toByteArray());
         BigInteger p = new BigInteger(request.getP().toByteArray());
         BigInteger clientPublicKey = new BigInteger(request.getPublicKey().toByteArray());
         // 1. 选择私钥 b (随机数，1 < b < p-1)
-        SecureRandom random = new SecureRandom();
+
         BigInteger b;
         do {
             b = new BigInteger(p.bitLength() - 1, random);

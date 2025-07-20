@@ -2,7 +2,6 @@ package com.slg.module.config;
 
 import com.slg.module.connection.ClientChannelManage;
 import com.slg.module.connection.ServerConfigManager;
-
 import java.util.*;
 
 public class GatewayRoutingManager {
@@ -29,7 +28,7 @@ public class GatewayRoutingManager {
 
 
     //todo 目前放回首个
-    public ServerConfig getChannelKey(int protocolId, Long userId, int flag) {
+    public ServerConfig getChannelKey(int protocolId, Long userId) {
         ServerConfigManager serverConfigManager = ServerConfigManager.getAlreadyInstance();
         if (serverConfigManager == null) {
             return null;
@@ -38,13 +37,19 @@ public class GatewayRoutingManager {
         if (channelKey == null) {
             return null;
         }
-        Map<Integer, Integer> userServerMap = channelManage.getUserGroupServerMap().get(userId);
+
+        Map<Integer, Integer> userServerMap = channelManage.getUserGroupServerMap().get(userId);//groupId--ServerId
         if (userServerMap == null) {
-            ServerConfig serverConfig = channelKey.get(0);
+            //随机分配一个服务器
+            ServerConfig serverConfig = channelKey.get(new Random().nextInt(userServerMap.size()));
             channelManage.putUserGroupServerMap(userId, serverConfig.getGroupId(), serverConfig.getServerId());
+            return serverConfig;
         }
 
         ServerConfig serverConfig = channelKey.get(0);
         return serverConfig;
     }
+
+
+
 }

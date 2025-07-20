@@ -5,12 +5,9 @@ import com.slg.module.rpc.interMsg.ForwardClient;
 import com.slg.module.rpc.interMsg.QPSMonitor;
 import com.slg.module.util.SystemTimeCache;
 import io.netty.channel.Channel;
-
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -41,13 +38,49 @@ public class ServerChannelManage {
     ForwardClient forwardClient = ForwardClient.getInstance();
 
     //目标服务器连接管理 connectionId = serverId * BASE + next
-    private static final Map<Integer, Channel> serverChannelMap = new HashMap<>();//<connectionId,channel>
-    private static final Map<Integer, Integer> serverMaxMap = new HashMap<>();//<serverId,max>
+    private static final Map<Integer, Channel> serverChannelMap = new ConcurrentHashMap<>();//<connectionId,channel>
+    //建立的连接数统计
+    private static final Map<Integer, Integer> serverMaxMap = new ConcurrentHashMap<>();//<serverId,max>
+
+
+    //内部服务器,
+    private final Map<Long, Map<Integer, Integer>> userIdForwardChannelIdMap = new ConcurrentHashMap<>();//userId-<groupId-connectionId>
+
 
     private final static int BASE = 1000;
 
     // QPS 记录
     private final QPSMonitor monitor = QPSMonitor.getInstance();
+
+
+    // 根据protocolId获取链接
+    public Integer getChannelIdByUser(Long userId, int protocolId) {
+        ServerConfigManager alreadyInstance = ServerConfigManager.getAlreadyInstance();
+        if (alreadyInstance == null) {
+            return null;
+        }
+        //
+        Integer groupId = alreadyInstance.getGroupId(protocolId);
+        if (groupId == null) {
+            return null;
+        }
+        Map<Integer, Integer> integerChannelIdMap = userIdForwardChannelIdMap.get(userId);
+        if (integerChannelIdMap == null) {
+            return null;
+        }
+        Integer channelId = integerChannelIdMap.get(groupId);
+        if (channelId == null) {
+            return null;
+        }
+        return channelId;
+    }
+
+    //保存用户链接
+    private void saveUserChannel(Long userId, int groupId, int connectionId) {
+        HashMap<Integer, Integer> groupConnectionMap = new HashMap<>();
+        groupConnectionMap.put(groupId, connectionId);
+        userIdForwardChannelIdMap.put(userId, groupConnectionMap);
+    }
 
 
     //todo 负债均衡
@@ -96,6 +129,60 @@ public class ServerChannelManage {
         return connection;
     }
 
+
+    //尝试分配新链接
+    private Integer allocationChanel2(ServerConfig server) {
+        // 初始化最小数目连接
+        Integer connectionId = null;
+        // 获取当前 serverId 对应的专用锁对象
+        Object lock = SERVER_LOCKS.computeIfAbsent(server.getServerId(), k -> new Object());
+        synchronized (lock) {
+            connectionId = forwardClient.connection2(server);
+        }
+        return connectionId;
+    }
+
+//    private Integer allocationChanel(ServerConfig server) {
+//        // 初始化最小数目连接
+//        return forwardClient.connection2(server);
+//    }
+
+
+    //分配链接
+    public Integer allocationChannelToUserId(int protocolId, Long userId) {
+        ServerConfigManager serverConfigManager = ServerConfigManager.getAlreadyInstance();
+        if (serverConfigManager == null) {
+            return null;
+        }
+        List<ServerConfig> channelKey = serverConfigManager.getChannelKey(protocolId);
+        if (channelKey == null) {
+            return null;
+        }
+        //随机分配一个服务器
+        ServerConfig serverConfig = channelKey.get(new Random().nextInt(channelKey.size()));
+        Integer sum = serverMaxMap.getOrDefault(serverConfig.getServerId(), 0);
+        if (sum < forwardClient.connectionMin) {
+            Integer connectionId = null;
+            // 获取当前 serverId 对应的专用锁对象
+            Object lock2 = SERVER_LOCKS.computeIfAbsent(serverConfig.getServerId(), k -> new Object());
+            synchronized (lock2) {
+                Integer orDefault = serverMaxMap.getOrDefault(serverConfig.getServerId(), 0);
+                if (orDefault >= forwardClient.connectionMin){
+                    return serverConfig.getServerId() * BASE + new Random().nextInt(orDefault);
+                }
+                //新链接
+                connectionId = forwardClient.connection2(serverConfig);
+                if (connectionId==null) return null;
+                saveUserChannel(userId, serverConfig.getGroupId(), connectionId);
+            }
+            return connectionId;
+        }
+        // 扩容链接 todo
+
+        return serverConfig.getServerId() * BASE + new Random().nextInt(sum);
+    }
+
+
     /**
      * 服务器标识符：serverId
      *
@@ -110,6 +197,20 @@ public class ServerChannelManage {
                 channels.add(remove);
             }
         }
+
+        //清除用户链接
+        for (Map.Entry<Long, Map<Integer, Integer>> userEntry : userIdForwardChannelIdMap.entrySet()) {
+//            Long userId = userEntry.getKey();
+            Map<Integer, Integer> map = userEntry.getValue();
+            for (Map.Entry<Integer, Integer> integerIntegerEntry : map.entrySet()) {
+                Integer groupId = integerIntegerEntry.getKey();
+                Integer userConnectionId = integerIntegerEntry.getValue();
+                if (userConnectionId >= serverId * BASE && userConnectionId <= serverId * BASE + BASE - 1) {
+                    map.remove(groupId);
+                }
+            }
+        }
+
         serverMaxMap.remove(serverId);
         return channels;
     }
@@ -153,7 +254,7 @@ public class ServerChannelManage {
     }
 
     //记录serverId的连接数目
-    public void updateServer(Integer serverId) {
+    private void updateServer(Integer serverId) {
         int orDefault = serverMaxMap.getOrDefault(serverId, 0);
         orDefault++;
         serverMaxMap.put(serverId, orDefault);
@@ -175,14 +276,12 @@ public class ServerChannelManage {
         return max + 1;
     }
 
-    // 是否包含
-    public boolean isContainConnectionId(int connectionId) {
-        for (Map.Entry<Integer, Channel> entry : serverChannelMap.entrySet()) {
-            if (entry.getKey() - connectionId == 0) {
-                return true;
-            }
-        }
-        return false;
+    public Channel getChanel(Integer connectionId) {
+        return serverChannelMap.getOrDefault(connectionId, null);
+    }
+
+    public Map<Long, Map<Integer, Integer>> getUserIdForwardChannelIdMap() {
+        return userIdForwardChannelIdMap;
     }
 
 

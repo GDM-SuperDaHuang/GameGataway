@@ -3,7 +3,6 @@ package com.slg.module.connection;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelId;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -31,7 +30,7 @@ public class ClientChannelManage {
 
 
     //客户端连接管理
-    private final Map<ChannelId, Long> channelUserIdMap = new ConcurrentHashMap<>();//channel-userId
+    private final Map<ChannelId, Long> channelUserIdMap = new ConcurrentHashMap<>();//channelId-userId
     private final Map<Long, Channel> userIdChannelMap = new ConcurrentHashMap<>();//userId-channel
 
     //心跳
@@ -51,7 +50,7 @@ public class ClientChannelManage {
     }
 
     public void putUserGroupServerMap(Long userId, Integer groupId, Integer serverId) {
-        Map<Integer, Integer> orDefault = userGroupServerMap.getOrDefault(userId, new HashMap<>());
+        Map<Integer, Integer> orDefault = userGroupServerMap.getOrDefault(userId, new ConcurrentHashMap<>());
         orDefault.put(groupId, serverId);
         userGroupServerMap.put(userId, orDefault);
     }
@@ -102,6 +101,12 @@ public class ClientChannelManage {
             userIdChannelMap.remove(userId);
             //断开删除习惯
             removeServerInfo(userId);
+        }
+        ServerChannelManage serverChannelManage = ServerChannelManage.getInstance();
+        //清除 内部转发的用户链接消息
+        Map<Long, Map<Integer, Integer>> userIdForwardChannelIdMap = serverChannelManage.getUserIdForwardChannelIdMap();
+        if (userId!=null){
+            userIdForwardChannelIdMap.remove(userId);
         }
     }
 
