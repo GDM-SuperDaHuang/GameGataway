@@ -175,15 +175,15 @@ public class ServerChannelManage {
         return max + 1;
     }
 
-    // 是否包含
-    public boolean isContainConnectionId(int connectionId) {
-        for (Map.Entry<Integer, Channel> entry : serverChannelMap.entrySet()) {
-            if (entry.getKey() - connectionId == 0) {
-                return true;
-            }
-        }
-        return false;
+//    // 是否包含
+//    public boolean isContainConnectionId(int connectionId) {
+//        return serverChannelMap.containsKey(connectionId);
+//    }
+
+    public Channel getChanel(Integer connectionId) {
+        return serverChannelMap.getOrDefault(connectionId, null);
     }
+
 
 
 }

@@ -8,7 +8,7 @@
 	<version>0.0.1-SNAPSHOT</version>
 	<name>entrance</name>
 	<description>entrance</description>
-	<packaging>jar</packaging>
+<!--	<packaging>jar</packaging>-->
 
 	<parent>
 		<groupId>com.slg.module</groupId>
@@ -42,20 +42,12 @@
 	</dependencies>
 
 	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
-			</plugin>
-		</plugins>
-		<resources>
-			<resource>
-				<directory>src/main/resources</directory>
-				<includes>
-					<include>**/*.properties</include>
-				</includes>
-			</resource>
-		</resources>
+<!--		<plugins>-->
+<!--			<plugin>-->
+<!--				<groupId>org.springframework.boot</groupId>-->
+<!--				<artifactId>spring-boot-maven-plugin</artifactId>-->
+<!--			</plugin>-->
+<!--		</plugins>-->
 	</build>
 
 

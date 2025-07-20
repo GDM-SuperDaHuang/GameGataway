@@ -396,7 +396,6 @@ public class PbMessageHandler extends SimpleChannelInboundHandler<ByteBufferMess
             msg.recycle();
         });
         clientChannelManage.remove(ctx.channel());
-
     }
 
     //发送消息
