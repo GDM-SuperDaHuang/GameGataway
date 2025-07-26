@@ -86,8 +86,27 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <!-- 指定主应用类（根据实际情况修改） -->
+                    <mainClass>com.slg.module.entrance.EntranceApplication</mainClass>
+                </configuration>
             </plugin>
         </plugins>
+
+        <resources>
+<!--            <resource>-->
+<!--                <directory>src/main/resources</directory>-->
+<!--                <excludes>-->
+<!--                    <exclude>application.properties</exclude>-->
+<!--                </excludes>-->
+<!--            </resource>-->
+            <resource>
+                <directory>src/main/resources</directory>
+                <includes>
+                    <include>**/*.properties</include>
+                </includes>
+            </resource>
+        </resources>
     </build>
 
 </project>
