@@ -152,10 +152,12 @@ public class ServerChannelManage {
     public Integer allocationChannelToUserId(int protocolId, Long userId) {
         ServerConfigManager serverConfigManager = ServerConfigManager.getAlreadyInstance();
         if (serverConfigManager == null) {
+            System.out.printf("ServerConfigManager is null");
             return null;
         }
         List<ServerConfig> channelKey = serverConfigManager.getChannelKey(protocolId);
         if (channelKey == null) {
+            System.out.printf(" List<ServerConfig> is null");
             return null;
         }
         //随机分配一个服务器

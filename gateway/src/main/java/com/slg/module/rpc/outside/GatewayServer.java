@@ -10,7 +10,9 @@ import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.epoll.Epoll;
 import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.ServerSocketChannel;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.net.InetSocketAddress;
@@ -18,8 +20,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class GatewayServer {
+    private final Class<? extends ServerSocketChannel> channelClass;
     private final EventLoopGroup bossGroup;
-    private final static EventLoopGroup workerGroup = new NioEventLoopGroup();
+    private final EventLoopGroup workerGroup;
     private final PbMessageHandler pbMessageHandler;
     private int port;
     private ChannelFuture serverChannelFuture;
@@ -43,8 +46,13 @@ public class GatewayServer {
         //读取配置
         if (Epoll.isAvailable() && System.getProperty("os.name", "").toLowerCase().contains("linux")) {
             bossGroup = new EpollEventLoopGroup(1);
+            workerGroup = new EpollEventLoopGroup(); // 使用 Epoll
+            channelClass = EpollServerSocketChannel.class;
         } else {
             bossGroup = new NioEventLoopGroup(1);
+            workerGroup = new NioEventLoopGroup(); // 使用 NIO
+            channelClass = NioServerSocketChannel.class;
+
         }
     }
 
@@ -54,7 +62,7 @@ public class GatewayServer {
         ServerBootstrap b = new ServerBootstrap();
         b.group(bossGroup, workerGroup)
                 // 指定Channel
-                .channel(NioServerSocketChannel.class)
+                .channel(channelClass)
 //                    .handler(new LoggingHandler())
                 .childOption(ChannelOption.SO_KEEPALIVE, true)
                 //非延迟，直接发送

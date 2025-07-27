@@ -7,8 +7,12 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.epoll.Epoll;
 import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollServerSocketChannel;
+import io.netty.channel.epoll.EpollSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.ServerSocketChannel;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 
 import java.util.ArrayList;
@@ -17,6 +21,8 @@ import java.util.concurrent.TimeUnit;
 
 
 public class ForwardClient {
+    private Class<? extends SocketChannel> channelClass;
+
     private final EventLoopGroup forwardingGroup;
     private final Bootstrap bootstrap = new Bootstrap();
     private final TargetServerHandler targetServerHandler = new TargetServerHandler();
@@ -47,8 +53,10 @@ public class ForwardClient {
         //读取配置
         if (Epoll.isAvailable() && System.getProperty("os.name", "").toLowerCase().contains("linux")) {
             forwardingGroup = new EpollEventLoopGroup(1);
+            channelClass = EpollSocketChannel.class;
         } else {
             forwardingGroup = new NioEventLoopGroup(1);
+            channelClass = NioSocketChannel.class;
         }
         // 注册QPS统计任务到EventLoop
 //        forwardingGroup.next().scheduleAtFixedRate(qpsCountHandler::updateQPS(), 1, 1, java.util.concurrent.TimeUnit.SECONDS);
@@ -56,9 +64,8 @@ public class ForwardClient {
         // QPS 监控器
         QPSMonitor qpsMonitor = QPSMonitor.getInstance();
         qpsMonitor.start(forwardingGroup.next());
-
         bootstrap.group(forwardingGroup)
-                .channel(NioSocketChannel.class)
+                .channel(channelClass)
                 .option(ChannelOption.TCP_NODELAY, true)
                 .option(ChannelOption.SO_KEEPALIVE, true)
                 .option(ChannelOption.SINGLE_EVENTEXECUTOR_PER_GROUP, true)  // 每个Channel绑定固定线程
@@ -139,6 +146,7 @@ public class ForwardClient {
      */
     public Integer connection2(ServerConfig serverConfig) {
         ServerChannelManage instance = ServerChannelManage.getInstance();
+        System.out.println("[ 准备建立连接 host:+" + serverConfig.getHost() + "+ Port "  + serverConfig.getPort() + "] ");
         ChannelFuture future = bootstrap.connect(serverConfig.getHost(), serverConfig.getPort());
         //同步阻塞
         try {
